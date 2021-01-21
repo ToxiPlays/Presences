@@ -72,7 +72,7 @@ presence.on("UpdateData", async () => {
     largeImageKey:
       "mainicon" /*The key (file name) of the Large Image on the presence. These are uploaded and named in the Rich Presence section of your application, called Art Assets*/,
     smallImageKey:
-      plst, /*The key (file name) of the Large Image on the presence. These are uploaded and named in the Rich Presence section of your application, called Art Assets*/,
+      plst.toLowerCase(), /*The key (file name) of the Large Image on the presence. These are uploaded and named in the Rich Presence section of your application, called Art Assets*/,
     smallImageText: plst, //The text which is displayed when hovering over the small image
     details: deets, //The upper section of the presence text
     state: state //The lower section of the presence text
