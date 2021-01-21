@@ -9,7 +9,7 @@ const presence = new Presence({
 var deets = "Idle";
 var state = "";
 var plst = "";
-let strt : Date = new Date(0);
+let strt : Date = 0;
 
 function setVars(){
     //Grab and process all your data here
@@ -31,7 +31,7 @@ function setVars(){
       switch (path) {
         case "/feed":
           if (strt.getTime() !== 0) {
-            strt = new Date(0);
+            strt = 0;
           }
           plst = "";
           deets = "Browsing idly";
@@ -53,7 +53,7 @@ function setVars(){
               plst = "Playing";
             };
             deets = "Listening";
-            state = `"${document.getElementsByTagName("song-link")[0].innerText}"`
+            state = `"${document.getElementsByTagName("song-link")[0].innerText}" - ${document.getElementsByTagName("project-author")[0].innerText}`
           }
           break;
       }
@@ -79,7 +79,7 @@ presence.on("UpdateData", async () => {
     //startTimestamp: 1577232000 //The unix epoch timestamp for when to start counting from
   }; /*Optionally you can set a largeImageKey here and change the rest as variable subproperties, for example presenceSata.type = "blahblah"; type examples: details, state, etc.*/
   if (strt.getTime == 0) {
-    presenceData["startTimestamp"] = strt.getTime() / 1000;
+    presenceData["startTimestamp"] = strt;
   }
   if (presenceData.details == null) {
     //This will fire if you do not set presence details
