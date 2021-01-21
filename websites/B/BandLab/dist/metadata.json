@@ -1,0 +1,22 @@
+{
+  "$schema": "https://schemas.premid.app/metadata/1.0",
+  "author": {
+    "name": "Toximixs",
+    "id": "708455359525945384"
+  },
+  "url": "bandlab.com",
+  "description": {
+    "en": "BandLab is a cloud-based Digital Audio Workstation (DAW) for creating music and collaborating with other musicians."
+  },
+  "service": "BandLab",
+  "version": "1",
+  "logo": "https://img.audiofanzine.com/images/u/manufacturer/normal/bandlab-12026.png",
+  "thumbnail": "https://help.bandlab.com/hc/article_attachments/360026708454/Screenshot__42__png_.jpg",
+  "color": "#FF0000",
+  "tags": [
+    "bandlab",
+    "daw",
+    "music"
+  ],
+  "category": "music"
+}
