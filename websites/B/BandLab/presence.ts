@@ -6,10 +6,10 @@ const presence = new Presence({
     pause: "presence.playback.paused"
     //You can use this to get translated strings in their browser language
   });
-var deets = "Idle";
-var state = "";
-var plst = "";
-let strt = 0;
+let deets : string = "Idle";
+let state : string = "";
+let plst : string = "";
+let strt : number = 0;
 
 function setVars(){
     //Grab and process all your data here
@@ -17,7 +17,8 @@ function setVars(){
     // element grabs //
     // api calls //
     // variable sets //
-    let path = window.location.pathname;
+    let path : string = window.location.pathname;
+    // I apologize for the horribleness that ensues, but I couldn't find a way to use startsWith inside of a switch case, so...
     if (path.startsWith("/explore")) {
         deets = "Browsing idly";
         state = "Exploring";
@@ -27,6 +28,21 @@ function setVars(){
       deets = "Browsing idly";
       state = "Checking out their library";
       return;
+    } else 
+    if (path.startsWith("/search")) {
+      deets = "Browsing idly";
+      state = "Searching for something...";
+      return;
+    } else
+    if (path.startsWith("/chat")) {
+      deets = "Socializing";
+      state = "DMing someone on BandLab";
+      return;
+    } else 
+    if (path.startsWith("/sounds")) {
+      deets = "Browsing";
+      state = "Checking out BandLab Sounds";
+      return; 
     } else {
       switch (path) {
         case "/feed":
@@ -37,16 +53,22 @@ function setVars(){
           deets = "Browsing idly";
           state = "Feed";
           break;
+        case "/mastering":
+          deets = "Working";
+          state = "Using BandLab Mastering";
+          break;
         case "/mix-editor":
           if (strt == 0) {
             strt = Date.now();
           }
+          plst = "";
           deets = "Mix Editor";
           state = `Working on "${document.getElementsByClassName("mix-editor-header-project-name-input")[0].value}"`;
           break;
         default:
           if (window.location.search.startsWith("?revId=")) {
             // On a song page
+            strt = 0;
             if (document.getElementsByClassName("global-player-icon-button")[1].classList[2] == "icon-player-play") {
               plst = "Paused";
             } else {
@@ -54,6 +76,15 @@ function setVars(){
             };
             deets = "Listening";
             state = `"${document.getElementsByTagName("song-link")[0].innerText}" - ${document.getElementsByTagName("project-author")[0].innerText}`
+          } else if (document.getElementsByClassName("profile-card-title")[0] !== undefined) {
+            // On a profile page
+            plst = "";
+            deets = "Browsing idly";
+            state = `Checking out ${document.getElementsByClassName("profile-card-title")[0].innerText}'s profile`
+          } else {
+            // For privacy purposes (this includes stuff like Settings page), just don't show
+            deets = "";
+            state = "";
           }
           break;
       }
@@ -72,7 +103,7 @@ presence.on("UpdateData", async () => {
     largeImageKey:
       "mainicon" /*The key (file name) of the Large Image on the presence. These are uploaded and named in the Rich Presence section of your application, called Art Assets*/,
     smallImageKey:
-      plst.toLowerCase(), /*The key (file name) of the Large Image on the presence. These are uploaded and named in the Rich Presence section of your application, called Art Assets*/,
+      plst.toLowerCase() /*The key (file name) of the Large Image on the presence. These are uploaded and named in the Rich Presence section of your application, called Art Assets*/,
     smallImageText: plst, //The text which is displayed when hovering over the small image
     details: deets, //The upper section of the presence text
     state: state //The lower section of the presence text
