@@ -68,13 +68,18 @@ function setVars(){
         default:
           if (window.location.search.startsWith("?revId=")) {
             // On a song page
+            let genre : string = document.getElementsByClassName("revision-genre-label")[0].innerText;
             strt = 0;
             if (document.getElementsByClassName("global-player-icon-button")[1].classList[2] == "icon-player-play") {
               plst = "Paused";
             } else {
               plst = "Playing";
             };
-            deets = "Listening";
+            if (genre === "Other") {
+              deets = "Listening" //The artist did not set a genre for this song, don't display it
+            } else {
+              deets = "Listening to "+genre; //For example: It'd say something like "Listening to Hip-Hop" or "Listening to Pop"
+            }
             state = `"${document.getElementsByTagName("song-link")[0].innerText}" - ${document.getElementsByTagName("project-author")[0].innerText}`
           } else if (document.getElementsByClassName("profile-card-title")[0] !== undefined) {
             // On a profile page
@@ -101,13 +106,12 @@ presence.on("UpdateData", async () => {
 
   let presenceData: PresenceData = {
     largeImageKey:
-      "mainicon" /*The key (file name) of the Large Image on the presence. These are uploaded and named in the Rich Presence section of your application, called Art Assets*/,
+      "mainicon",
     smallImageKey:
-      plst.toLowerCase() /*The key (file name) of the Large Image on the presence. These are uploaded and named in the Rich Presence section of your application, called Art Assets*/,
+      plst.toLowerCase(),
     smallImageText: plst, //The text which is displayed when hovering over the small image
     details: deets, //The upper section of the presence text
     state: state //The lower section of the presence text
-    //startTimestamp: 1577232000 //The unix epoch timestamp for when to start counting from
   }; /*Optionally you can set a largeImageKey here and change the rest as variable subproperties, for example presenceSata.type = "blahblah"; type examples: details, state, etc.*/
   if (strt == 0) {
     presenceData["startTimestamp"] = strt;
