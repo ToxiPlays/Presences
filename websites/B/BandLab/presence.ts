@@ -9,7 +9,7 @@ const presence = new Presence({
 var deets = "Idle";
 var state = "";
 var plst = "";
-let strt : Date = 0;
+let strt = 0;
 
 function setVars(){
     //Grab and process all your data here
@@ -30,7 +30,7 @@ function setVars(){
     } else {
       switch (path) {
         case "/feed":
-          if (strt.getTime() !== 0) {
+          if (strt !== 0) {
             strt = 0;
           }
           plst = "";
@@ -38,7 +38,7 @@ function setVars(){
           state = "Feed";
           break;
         case "/mix-editor":
-          if (strt.getTime() == 0) {
+          if (strt == 0) {
             strt = Date.now();
           }
           deets = "Mix Editor";
@@ -78,7 +78,7 @@ presence.on("UpdateData", async () => {
     state: state //The lower section of the presence text
     //startTimestamp: 1577232000 //The unix epoch timestamp for when to start counting from
   }; /*Optionally you can set a largeImageKey here and change the rest as variable subproperties, for example presenceSata.type = "blahblah"; type examples: details, state, etc.*/
-  if (strt.getTime == 0) {
+  if (strt == 0) {
     presenceData["startTimestamp"] = strt;
   }
   if (presenceData.details == null) {
