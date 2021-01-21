@@ -4,7 +4,7 @@
     "name": "Toximixs",
     "id": "708455359525945384"
   },
-  "url": "bandlab.com",
+  "url": ["bandlab.com","www.bandlab.com"],
   "description": {
     "en": "BandLab is a cloud-based Digital Audio Workstation (DAW) for creating music and collaborating with other musicians."
   },
