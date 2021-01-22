@@ -6,10 +6,10 @@ const presence = new Presence({
     pause: "presence.playback.paused"
     //You can use this to get translated strings in their browser language
   });
-let deets : string = "Idle";
-let state : string = "";
-let plst : string = "";
-let strt : number = 0;
+let deets : string = "Idle",
+ state : string = "",
+ plst : string = "",
+ strt : number = 0;
 
 function setVars(){
     //Grab and process all your data here
@@ -104,7 +104,7 @@ presence.on("UpdateData", async () => {
 
     It is recommended to set up another function outside of this event function which will change variable values and do the heavy lifting if you call data from an API.*/
 
-  let presenceData: PresenceData = {
+  let presenceData : PresenceData = {
     largeImageKey:
       "mainicon",
     smallImageKey:
