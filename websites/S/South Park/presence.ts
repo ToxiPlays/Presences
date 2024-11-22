@@ -1,181 +1,166 @@
 const presence = new Presence({
-    clientId: "819942708604174376"
-  }),
-  startsTime = Math.floor(Date.now() / 1000);
+		clientId: "819942708604174376",
+	}),
+	startTime = Math.floor(Date.now() / 1000);
+
+let SouthParkData: Data;
 
 presence.on("UpdateData", async () => {
-  const video = document.querySelector("video"),
-    path = document.location.pathname,
-    SouthParkData: __DATA__ = await presence.getPageletiable("__DATA__"),
-    buttons = await presence.getSetting("buttons");
+	const video = document.querySelector("video"),
+		path = document.location.pathname,
+		showButtons = await presence.getSetting<boolean>("buttons");
 
-  let presenceData: PresenceData = {
-    largeImageKey: "south_park_logo",
-    details: "Browsing...",
-    smallImageKey: "reading",
-    startTimestamp: startsTime
-  };
+	SouthParkData ??= await presence.getPageletiable<Data>("__DATA__");
+	const data = SouthParkData.children[0].handleTVEAuthRedirection;
 
-  if (path.includes("/episodes/")) {
-    const EpAndSeason = SouthParkData.children[0].props.title.text
-        .split(" - ")[1]
-        .match(/([1-9]?[0-9]?[0-9])/g),
-      EpTitle = SouthParkData.children[0].props.title.text.split(" - ")[2],
-      title = SouthParkData.children[0].props.title.text.split(" - ")[0],
-      timestamps = presence.getTimestamps(
-        presence.timestampFromFormat(
-          document.querySelector("div.edge-gui-current-time")?.textContent
-        ),
-        presence.timestampFromFormat(
-          document.querySelector("div.edge-gui-duration")?.textContent
-        )
-      );
+	let presenceData: PresenceData = {
+		largeImageKey:
+			"https://cdn.rcd.gg/PreMiD/websites/S/South%20Park/assets/logo.jpg",
+		details: "Browsing...",
+		smallImageKey: Assets.Reading,
+		startTimestamp: startTime,
+		type: ActivityType.Watching,
+	};
 
-    if (video) {
-      presenceData.details = title;
-      presenceData.state = `S${EpAndSeason[0]}:E${EpAndSeason[1]} ${EpTitle}`;
+	if (path.includes("/episodes/") || path.includes("/episodios/")) {
+		const { title } = data.videoDetail,
+			{ subTitle } = data.videoDetail;
 
-      presenceData.smallImageKey =
-        video.paused || isNaN(video.duration) ? "pause" : "play";
-      presenceData.smallImageText =
-        video.paused || isNaN(video.duration) ? "Paused" : "Playing";
+		if (video) {
+			presenceData.details = title;
+			presenceData.state = subTitle;
 
-      presenceData.startTimestamp = timestamps[0];
-      presenceData.endTimestamp = timestamps[1];
+			presenceData.smallImageKey =
+				video.paused || isNaN(video.duration) ? Assets.Pause : Assets.Play;
+			presenceData.smallImageText =
+				video.paused || isNaN(video.duration) ? "Paused" : "Playing";
 
-      presenceData.buttons = [
-        {
-          label: "Watch Episode",
-          url: `https://www.southparkstudios.com/episodes/${
-            document.location.pathname.split("/")[2]
-          }`
-        }
-      ];
+			[presenceData.startTimestamp, presenceData.endTimestamp] =
+				presence.getTimestampsfromMedia(video);
 
-      if (video.paused || isNaN(video.duration)) {
-        delete presenceData.startTimestamp;
-        delete presenceData.endTimestamp;
-      }
-    } else {
-      presenceData.details = "Viewing Episode:";
-      presenceData.state = `S${EpAndSeason[0]}:E${EpAndSeason[1]} ${EpTitle}`;
-    }
-  } else if (path.includes("/seasons/")) {
-    const season = document.URL.match(/(season-[1-9]?[0-9])/)[0].replace(
-      "season-",
-      ""
-    );
+			presenceData.buttons = [
+				{
+					label: "Watch Episode",
+					url: `${
+						path.includes("/episodios/")
+							? "https://www.southpark.lat/episodios"
+							: "https://www.southparkstudios.com/episodes"
+					}/${document.location.pathname.split("/")[2]}`,
+				},
+			];
 
-    presenceData.details = "Viewing Episodes of:";
-    presenceData.state = `Season ${season}`;
-  } else if (path.includes("/collections/")) {
-    const title = SouthParkData.children[0].props.title.text.split(" - ")[0],
-      EpTilte = document.querySelector("div.header > span").textContent,
-      EpAndSeason = document
-        .querySelector("div > div.sub-header > span")
-        .textContent.match(/([1-9]?[0-9]?[0-9])/g),
-      timestamps = presence.getTimestampsfromMedia(video);
+			if (video.paused || isNaN(video.duration)) {
+				delete presenceData.startTimestamp;
+				delete presenceData.endTimestamp;
+			}
+		} else {
+			presenceData.details = "Viewing an episode:";
+			presenceData.state = `${subTitle}: ${title}`;
+		}
+	} else if (path.includes("/seasons/")) {
+		presenceData.details = "Viewing Episodes of:";
+		presenceData.state = `Season ${document.URL.match(
+			/(season-[1-9]?[0-9])/
+		)[0].replace("season-", "")}`;
+	} else if (path.includes("/collections/")) {
+		if (video) {
+			presenceData.details = data.videoDetail.playlist.title;
+			presenceData.state = data.videoDetail.title;
 
-    if (video) {
-      presenceData.details = title;
-      presenceData.state = `S${EpAndSeason[0]}:E${EpAndSeason[1]} ${EpTilte}`;
+			presenceData.smallImageKey = video.paused ? Assets.Pause : Assets.Play;
+			presenceData.smallImageText = video.paused ? "Paused" : "Playing";
 
-      presenceData.smallImageKey = video.paused ? "pause" : "play";
-      presenceData.smallImageText = video.paused ? "Paused" : "Playing";
+			[presenceData.startTimestamp, presenceData.endTimestamp] =
+				presence.getTimestampsfromMedia(video);
 
-      presenceData.startTimestamp = timestamps[0];
-      presenceData.endTimestamp = timestamps[1];
+			presenceData.buttons = [
+				{
+					label: "Watch Clip",
+					url: `https://www.southparkstudios.com/collections/${
+						document.location.pathname.split("/")[2]
+					}`,
+				},
+			];
 
-      presenceData.buttons = [
-        {
-          label: "Watch Episode",
-          url: `https://www.southparkstudios.com/collections/${
-            document.location.pathname.split("/")[2]
-          }`
-        }
-      ];
+			if (video.paused) {
+				delete presenceData.startTimestamp;
+				delete presenceData.endTimestamp;
+			}
+		} else {
+			presenceData.details = "Viewing a collection:";
+			presenceData.state = data.videoDetail.playlist.title;
+		}
+	}
 
-      if (video.paused) {
-        delete presenceData.startTimestamp;
-        delete presenceData.endTimestamp;
-      }
-    } else {
-      presenceData.details = "Viewing Collection:";
-      presenceData.state = title;
-    }
-  }
+	const pages: {
+		[key: string]: PresenceData;
+	} = {
+		"/create-account/step-1": {
+			details: "Creating an account",
+			state: "Step 1 of 2",
+			smallImageKey: Assets.Writing,
+		},
+		"/create-account/step-2": {
+			details: "Creating an account",
+			state: "Step 2 of 2",
+			smallImageKey: Assets.Writing,
+		},
+		"/settings": {
+			details: "Viewing their:",
+			state: "Account details",
+		},
+		"/email-verification": {
+			details: "Viewing page:",
+			state: "Email verification",
+		},
+		"/news": {
+			details: "Viewing page:",
+			state: "The news page",
+		},
+		"/news/": {
+			details: "Reading article:",
+			state: document.querySelector("h1")?.textContent,
+			buttons: [
+				{
+					label: "Read article",
+					url: `https://www.southparkstudios.com/news/${
+						document.location.pathname.split("/")[2]
+					}`,
+				},
+			],
+		},
+		"/avatar": {
+			details: "Viewing page:",
+			state: "Avatar creator",
+		},
+		"/forum/v": {
+			details: "Reading forum:",
+			state: document.querySelector("h2")?.textContent,
+		},
+		"/wiki": {
+			details: "Viewing page:",
+			state: "Wiki",
+		},
+	};
 
-  const headline = document.querySelector("h1")?.textContent,
-    forum = document.querySelector("h2")?.textContent,
-    pages: {
-      [key: string]: PresenceData;
-    } = {
-      "/create-account/step-1": {
-        details: "Creating an account",
-        state: "Step 1 of 2",
-        smallImageKey: "writing"
-      },
-      "/create-account/step-2": {
-        details: "Creating an account",
-        state: "Step 2 of 2",
-        smallImageKey: "writing"
-      },
-      "/settings": {
-        details: "Viewing their:",
-        state: "Account details"
-      },
-      "/email-verification": {
-        details: "Viewing page:",
-        state: "Email verification"
-      },
-      "/news": {
-        details: "Viewing page:",
-        state: "The news page"
-      },
-      "/news/": {
-        details: "Reading article:",
-        state: headline,
-        buttons: [
-          {
-            label: "Read article",
-            url: `https://www.southparkstudios.com/news/${
-              document.location.pathname.split("/")[2]
-            }`
-          }
-        ]
-      },
-      "/avatar": {
-        details: "Viewing page:",
-        state: "Avatar creator"
-      },
-      "/forum/v": {
-        details: "Reading forum:",
-        state: forum
-      },
-      "/wiki": {
-        details: "Viewing page:",
-        state: "Wiki"
-      }
-    };
+	for (const [key, value] of Object.entries(pages))
+		if (path.match(key)) presenceData = { ...presenceData, ...value };
 
-  for (const [key, value] of Object.entries(pages)) {
-    if (path.match(key)) {
-      presenceData = { ...presenceData, ...value };
-    }
-  }
+	if (!showButtons) delete presenceData.buttons;
 
-  if (!buttons) delete presenceData.buttons;
-
-  presence.setActivity(presenceData);
+	presence.setActivity(presenceData);
 });
 
-interface __DATA__ {
-  children: {
-    type: string;
-    props: {
-      title: {
-        text: string;
-      };
-    };
-  }[];
+interface Data {
+	children: {
+		handleTVEAuthRedirection: {
+			videoDetail: {
+				title: string;
+				subTitle: string;
+				playlist: {
+					title: string;
+				};
+			};
+		};
+	}[];
 }

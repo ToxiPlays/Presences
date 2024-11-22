@@ -1,62 +1,169 @@
 const presence = new Presence({
-  clientId: "706956748329713685"
+	clientId: "1195051461822914640",
 });
-const browsingStamp = Math.floor(Date.now() / 1000);
-var pathname, query1, query2, query3, query4, query5, query6, query7;
-presence.on("iFrameData", (data) => {
-  pathname = data.pathnameA;
-  query1 = data.queryA;
-  query2 = data.queryB;
-  query3 = data.queryC;
-  query4 = data.queryD;
-  query5 = data.queryE;
-  query6 = data.queryF;
-  query7 = data.queryG;
-});
-presence.on("UpdateData", () => {
-  if (!location.pathname.startsWith("/frames")) {
-    pathname = window.location.pathname;
-    query1 = document.querySelector("div.boardBanner>div.boardTitle");
-    query2 = document.querySelector("div.boxbar>h2");
-    query3 = document.querySelector("div.pagelist>div.pages");
-    query4 = document.querySelector("div.pagelist>div.pages>strong");
-    query5 = document.querySelector("table#postForm");
-    query6 = document.querySelector("#togglePostFormLink");
-    query7 = document.querySelector("div#quickReply");
-    query1 = query1 ? query1.textContent : false;
-    query2 = query2 ? query2.textContent : false;
-    query3 = query3 ? query3.lastElementChild.textContent : false;
-    query4 = query4 ? query4.textContent : false;
-    query5 = query5 ? true : false;
-    query6 = query6 ? query6.hasAttribute("style") : false;
-    query7 = query7 ? true : false;
-  }
-  let title;
-  var getTitle = function (): string {
-    if (!query1) title = query2;
-    else title = query1;
-    if (query3) title += ` - ${query4}/${query3}`;
-    return title;
-  };
-  const presenceData: PresenceData = {
-    details: getTitle(),
-    largeImageKey: "logo",
-    startTimestamp: browsingStamp
-  };
-  if (pathname == "/") presenceData.details = "Home";
-  else if (pathname && pathname.includes("/thread/")) {
-    var ThreadId = pathname.split("/");
-    presenceData.state = `Thread ${
-      ThreadId[Number(ThreadId.indexOf("thread") + 1)]
-    }`;
-  }
-  if (query6 || query7) {
-    presenceData.smallImageKey = "writing";
-    presenceData.smallImageText = "Replying/Posting";
-  }
-  presenceData.startTimestamp = browsingStamp;
-  if (presenceData.details == null) {
-    presence.setTrayTitle();
-    presence.setActivity();
-  } else presence.setActivity(presenceData);
+
+const enum Assets {
+	Logo = "https://cdn.rcd.gg/PreMiD/websites/0-9/4chan/assets/logo.png",
+}
+
+const boards: { [board: string]: string } = {
+		"/3/": "3DCG",
+		"/a/": "Anime & Manga",
+		"/aco/": "Adult Cartoons",
+		"/adv/": "Advice",
+		"/an/": "Animals & Nature",
+		"/asp/": "Alternative Sports",
+		"/b/": "Random",
+		"/bant/": "International/Random",
+		"/biz/": "Business & Finance",
+		"/c/": "Anime/Cute",
+		"/cgl/": "Cosplay & EGL",
+		"/ck/": "Food & Cooking",
+		"/cm/": "Cute/Male",
+		"/co/": "Comics & Cartoons",
+		"/d/": "Hentai/Alternative",
+		"/diy/": "Do*It*Yourself",
+		"/e/": "Ecchi",
+		"/f/": "Flash",
+		"/fa/": "Fashion",
+		"/fit/": "Fitness",
+		"/g/": "Technology",
+		"/gd/": "Graphic Design",
+		"/gif/": "Adult GIF",
+		"/h/": "Hentai",
+		"/hc/": "Hardcore",
+		"/hm/": "Handsome Men",
+		"/hr/": "High Resolution",
+		"/i/": "Oekaki",
+		"/ic/": "Artwork/Critique",
+		"/his/": "History & Humanities",
+		"/int/": "International",
+		"/jp/": "Otaku Culture",
+		"/k/": "Weapons",
+		"/lit/": "Literature",
+		"/lgbt/": "LGBT",
+		"/m/": "Mecha",
+		"/mlp/": "Pony",
+		"/mu/": "Music",
+		"/news/": "Current News",
+		"/n/": "Transportation",
+		"/o/": "Auto",
+		"/out/": "Outdoors",
+		"/p/": "Photography",
+		"/po/": "Papercraft & Origami",
+		"/pol/": "Politically Incorrect",
+		"/pw/": "Professional Wrestling",
+		"/qst/": "Quests",
+		"/r/": "Adult Requests",
+		"/r9k/": "ROBOT9001",
+		"/s4s/": "Shit 4chan Says",
+		"/s/": "Sexy Beautiful Women",
+		"/sci/": "Science & Math",
+		"/soc/": "Cams & Meetups",
+		"/sp/": "Sports",
+		"/t/": "Torrents",
+		"/tg/": "Traditional Games",
+		"/toy/": "Toys",
+		"/trash/": "Off*topic",
+		"/trv/": "Travel",
+		"/tv/": "Television & Film",
+		"/u/": "Yuri",
+		"/v/": "Video Games",
+		"/vg/": "Video Game Generals",
+		"/vm/": "Video Games/Multiplayer",
+		"/vmg/": "Video Games/Mobile",
+		"/vip/": "Very Important Posts",
+		"/vp/": "Pokémon",
+		"/vr/": "Retro Games",
+		"/vrpg/": "Video Games/RPG",
+		"/vst/": "Video Games/Strategy",
+		"/vt/": "Virtual YouTubers",
+		"/w/": "Anime/Wallpapers",
+		"/wg/": "Wallpapers/General",
+		"/wsg/": "Worksafe GIF",
+		"/wsr/": "Worksafe Requests",
+		"/x/": "Paranormal",
+		"/xs/": "Extreme Sports",
+		"/y/": "Yaoi",
+	},
+	browsingTimestamp = Math.floor(Date.now() / 1000),
+	nsfwBoards = new Set([
+		"/aco/",
+		"/bant/",
+		"/b/",
+		"/d/",
+		"/e/",
+		"/gif/",
+		"/hc/",
+		"/h/",
+		"/hm/",
+		"/hr/",
+		"/pol/",
+		"/r9k/",
+		"/r/",
+		"/s4s/",
+		"/s/",
+		"/soc/",
+		"/t/",
+		"/u/",
+		"/y/",
+	]);
+
+presence.on("UpdateData", async () => {
+	const presenceData: PresenceData = {
+			largeImageKey: Assets.Logo,
+			startTimestamp: browsingTimestamp,
+		},
+		{ href, pathname } = document.location;
+
+	if (pathname === "/") presenceData.details = "Viewing the front page";
+	else if (pathname.startsWith("/faq"))
+		presenceData.details = "Reading the FAQ";
+	else if (pathname.startsWith("/rules"))
+		presenceData.details = "Reading the rules";
+	else if (pathname.startsWith("/4channews"))
+		presenceData.details = "Viewing news posts";
+	else {
+		let isNsfw = false;
+		for (const board in boards) {
+			if (pathname.includes(board)) {
+				isNsfw = nsfwBoards.has(board);
+				if (isNsfw) presenceData.details = "Browsing a board";
+				else presenceData.details = `Browsing ${board} - ${boards[board]}`;
+				break;
+			}
+		}
+
+		if (pathname.includes("/thread/")) {
+			if (!isNsfw) {
+				const threadNum = pathname.split("/").at(-1),
+					threadSubject = document.querySelector(".subject").textContent;
+
+				if (await presence.getSetting("showThumbnail")) {
+					const thumbnail = document.querySelector(
+						`#f${threadNum} .fileThumb img`
+					);
+					if (thumbnail) {
+						presenceData.largeImageKey = `https:${thumbnail.getAttribute(
+							"src"
+						)}`;
+					}
+				}
+
+				presenceData.buttons = [
+					{
+						label: "View Thread",
+						url: href,
+					},
+				];
+
+				if (threadSubject)
+					presenceData.state = `>>${threadNum} - "${threadSubject}"`;
+				else presenceData.state = `>>${threadNum}`;
+			} else presenceData.state = "Viewing a thread";
+		} else if (pathname.includes("/archive"))
+			presenceData.state = "Checking the archive";
+	}
+
+	presence.setActivity(presenceData);
 });

@@ -1,33 +1,37 @@
 const presence = new Presence({
-    clientId: "844109673618735144"
-  }),
-  elapsed = Math.floor(Date.now() / 1000);
+		clientId: "844109673618735144",
+	}),
+	browsingTimestamp = Math.floor(Date.now() / 1000);
 
 presence.on("UpdateData", async () => {
-  const data: PresenceData = {
-      largeImageKey: "logo"
-    },
-    path = document.location.pathname;
-  if (path.includes("/folders/") || path.includes("/search/")) {
-    if (path.includes("messages")) {
-      data.details = "Viewing an Email";
-      data.startTimestamp = elapsed;
-    } else {
-      data.details = "Viewing Mail";
-      data.startTimestamp = elapsed;
-    }
-  } else if (path.includes("/compose/")) {
-    data.details = "Composing a New Email";
-    data.startTimestamp = elapsed;
-  } else if (path.includes("/settings/")) {
-    data.details = "Viewing Settings";
-    data.startTimestamp = elapsed;
-  } else if (path.includes("/contacts")) {
-    data.details = "Viewing Contacts";
-    data.startTimestamp = elapsed;
-  } else {
-    data.details = "Viewing Mail";
-    data.startTimestamp = elapsed;
-  }
-  presence.setActivity(data);
+	const presenceData: PresenceData = {
+			largeImageKey:
+				"https://cdn.rcd.gg/PreMiD/websites/Y/Yahoo%20Mail/assets/logo.png",
+			startTimestamp: browsingTimestamp,
+		},
+		privacy = await presence.getSetting("privacy"),
+		{ pathname } = document.location;
+	if (document.querySelector('[data-test-id="message-group-subject-text"]')) {
+		presenceData.details = "Reading an email";
+		presenceData.smallImageKey = Assets.Reading;
+	} else if (
+		document.querySelector<HTMLInputElement>('[role="combobox"]')?.value
+	) {
+		presenceData.details = "Searching";
+		presenceData.smallImageKey = Assets.Search;
+	} else if (document.querySelector('[data-test-id="recipient-input"]'))
+		presenceData.details = "Composing an email";
+	else if (privacy) {
+		if (pathname.includes("/folders/") || pathname.includes("/search/")) {
+			if (pathname.includes("messages"))
+				presenceData.details = "Viewing an email";
+			else presenceData.details = "Viewing mail";
+		} else presenceData.details = "Browsing";
+	} else if (document.querySelector('[data-test-is-active="true"]')) {
+		presenceData.details = `Viewing ${document
+			.querySelector('[data-test-is-active="true"]')
+			.textContent.replace(/[0-9]*/gm, "")}`;
+	} else presenceData.details = "Browsing";
+
+	presence.setActivity(presenceData);
 });

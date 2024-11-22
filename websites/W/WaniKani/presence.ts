@@ -1,265 +1,268 @@
 const presence: Presence = new Presence({
-    clientId: "800166344023867443"
-  }),
-  largeImageKey = "logo";
+		clientId: "800166344023867443",
+	}),
+	browsingTimestamp = Math.floor(Date.now() / 1000);
 
-let elapsed = 0,
-  eventType = -1;
-
-function capitalize(string: string) {
-  return string.charAt(0).toUpperCase() + string.slice(1);
+const enum Assets {
+	Logo = "https://cdn.rcd.gg/PreMiD/websites/W/WaniKani/assets/logo.png",
+	Avatar = "https://cdn.rcd.gg/PreMiD/websites/W/WaniKani/assets/0.png",
+	Kanji = "https://cdn.rcd.gg/PreMiD/websites/W/WaniKani/assets/1.png",
+	Radical = "https://cdn.rcd.gg/PreMiD/websites/W/WaniKani/assets/2.png",
+	Vocabulary = "https://cdn.rcd.gg/PreMiD/websites/W/WaniKani/assets/3.png",
+	Lessons0 = "https://cdn.rcd.gg/PreMiD/websites/W/WaniKani/assets/4.png",
+	Lessons1 = "https://cdn.rcd.gg/PreMiD/websites/W/WaniKani/assets/5.png",
+	Lessons25 = "https://cdn.rcd.gg/PreMiD/websites/W/WaniKani/assets/6.png",
+	Lessons50 = "https://cdn.rcd.gg/PreMiD/websites/W/WaniKani/assets/7.png",
+	Lessons100 = "https://cdn.rcd.gg/PreMiD/websites/W/WaniKani/assets/8.png",
+	Lessons250 = "https://cdn.rcd.gg/PreMiD/websites/W/WaniKani/assets/9.png",
+	Lessons500 = "https://cdn.rcd.gg/PreMiD/websites/W/WaniKani/assets/10.png",
+	Reviews0 = "https://cdn.rcd.gg/PreMiD/websites/W/WaniKani/assets/11.png",
+	Reviews1 = "https://cdn.rcd.gg/PreMiD/websites/W/WaniKani/assets/12.png",
+	Reviews50 = "https://cdn.rcd.gg/PreMiD/websites/W/WaniKani/assets/13.png",
+	Reviews100 = "https://cdn.rcd.gg/PreMiD/websites/W/WaniKani/assets/14.png",
+	Reviews250 = "https://cdn.rcd.gg/PreMiD/websites/W/WaniKani/assets/15.png",
+	Reviews500 = "https://cdn.rcd.gg/PreMiD/websites/W/WaniKani/assets/16.png",
+	Reviews1000 = "https://cdn.rcd.gg/PreMiD/websites/W/WaniKani/assets/17.png",
 }
 
-/**
- * -1 = unset
- * 0 = browsing
- * 1 = browsing dashboard
- * 2 = doing lessons/reviews
- */
+function capitalize(string: string) {
+	return string.charAt(0).toUpperCase() + string.slice(1);
+}
+
+function getTypeAsset(string: string) {
+	switch (string.toLowerCase()) {
+		case "kanji":
+			return Assets.Kanji;
+		case "radical":
+			return Assets.Radical;
+		case "vocabulary":
+			return Assets.Vocabulary;
+		default:
+			return null;
+	}
+}
+
+function getReviewPresence(): PresenceData {
+	const data: PresenceData = {},
+		characterType = [
+			...document.querySelector<HTMLDivElement>(
+				'[data-quiz-header-base-class="character-header"]'
+			).classList,
+		]
+			.find(cls => cls.startsWith("character-header--"))
+			.split("--")[1],
+		completeCount = document.querySelector<HTMLDivElement>(
+			'[data-quiz-statistics-target="completeCount"]'
+		);
+
+	data.state = `${
+		document.querySelector<HTMLDivElement>(
+			'[data-quiz-header-target="characters"]'
+		).textContent
+	} | ${capitalize(characterType)} ${capitalize(
+		document.querySelector<HTMLDivElement>(
+			'[data-quiz-input-target="questionTypeContainer"]'
+		).dataset.questionType
+	)}`;
+	if (completeCount) {
+		data.smallImageText = `${completeCount.textContent} complete, ${
+			document.querySelector<HTMLDivElement>(
+				'[data-quiz-statistics-target="remainingCount"]'
+			).textContent
+		} remaining. (${
+			document.querySelector<HTMLDivElement>(
+				'[data-quiz-statistics-target="percentCorrect"]'
+			).textContent
+		}%)`;
+	}
+	data.smallImageKey = getTypeAsset(characterType);
+	return data;
+}
+
+function getLessonPresence(): PresenceData {
+	const presenceData: PresenceData = {},
+		totalStats = document.querySelectorAll<HTMLDivElement>(
+			'[data-controller="subject-count-statistics"] [data-subject-count-statistics-target="count"]'
+		);
+	presenceData.state = `${
+		document.querySelector<HTMLDivElement>(
+			'[data-quiz-header-target="characters"]'
+		).textContent
+	} - ${
+		document.querySelector<HTMLDivElement>(
+			'[data-quiz-header-target="meaning"]'
+		).textContent
+	}`;
+	presenceData.smallImageKey = getTypeAsset(
+		[
+			...document.querySelector<HTMLDivElement>(
+				'[data-quiz-header-base-class="character-header"]'
+			).classList,
+		]
+			.find(cls => cls.startsWith("character-header--"))
+			.split("--")[1]
+	);
+	if (totalStats.length === 3)
+		presenceData.smallImageText = `${totalStats[0].textContent} radicals | ${totalStats[1].textContent} kanji | ${totalStats[2].textContent} vocab`;
+	return presenceData;
+}
 
 presence.on("UpdateData", () => {
-  const { hostname, pathname } = window.location,
-    data: PresenceData = {};
+	const { hostname, pathname } = document.location,
+		presenceData: PresenceData = {
+			largeImageKey: Assets.Logo,
+			startTimestamp: browsingTimestamp,
+		};
 
-  let details: string,
-    state: string,
-    smallImageKey: string,
-    smallImageText: string;
+	switch (hostname) {
+		case "wanikani.com":
+		case "www.wanikani.com": {
+			switch (pathname) {
+				case "/":
+				case "/dashboard":
+				case "/login": {
+					const buttons = document.querySelector(
+						".lessons-and-reviews"
+					).children;
+					if (buttons.length === 2) {
+						const lessons =
+								+buttons[0].querySelector<HTMLSpanElement>("[class*=__count]")
+									.textContent,
+							reviews =
+								+buttons[1].querySelector<HTMLSpanElement>("[class*=__count]")
+									.textContent;
+						presenceData.details = "Viewing Dashboard";
+						presenceData.state = `${lessons} lessons | ${reviews} reviews`;
+						presenceData.smallImageText =
+							document.querySelector<HTMLAnchorElement>(
+								".user-summary__attribute > a"
+							).textContent;
+						if (lessons > reviews) {
+							if (lessons < 25) presenceData.smallImageKey = Assets.Lessons1;
+							else if (lessons < 50)
+								presenceData.smallImageKey = Assets.Lessons25;
+							else if (lessons < 100)
+								presenceData.smallImageKey = Assets.Lessons50;
+							else if (lessons < 250)
+								presenceData.smallImageKey = Assets.Lessons100;
+							else if (lessons < 500)
+								presenceData.smallImageKey = Assets.Lessons250;
+							else presenceData.smallImageKey = Assets.Lessons500;
+						} else if (reviews < 1)
+							presenceData.smallImageKey = Assets.Reviews0;
+						else if (reviews < 50) presenceData.smallImageKey = Assets.Reviews1;
+						else if (reviews < 100)
+							presenceData.smallImageKey = Assets.Reviews50;
+						else if (reviews < 250)
+							presenceData.smallImageKey = Assets.Reviews100;
+						else if (reviews < 500)
+							presenceData.smallImageKey = Assets.Reviews250;
+						else if (reviews < 1000)
+							presenceData.smallImageKey = Assets.Reviews500;
+						else presenceData.smallImageKey = Assets.Reviews1000;
+					} else {
+						presenceData.details = "Browsing";
+						presenceData.state = "Viewing Home Page";
+					}
+					break;
+				}
+				case "/subject-lessons/picker": {
+					presenceData.details = "Choosing Lessons";
+					break;
+				}
+				case "/subjects/extra_study": {
+					presenceData.details = `Doing ${
+						document.querySelector<HTMLDivElement>(
+							".character-header__menu-title"
+						).textContent
+					}`;
+					Object.assign(presenceData, getReviewPresence());
+					break;
+				}
+				case pathname.match(/^\/recent-mistakes\/.*?\/quiz$/)?.input: {
+					presenceData.details = "Doing Extra Study: Recent Mistakes";
+					Object.assign(presenceData, getReviewPresence());
+					break;
+				}
+				case pathname.match(/^\/recent-mistakes\/.*?\/subjects\/\d+\/lesson$/)
+					?.input: {
+					presenceData.details = "Doing Extra Study: Recent Mistakes Lessons";
+					Object.assign(presenceData, getLessonPresence());
+					break;
+				}
+				case "/subjects/review": {
+					presenceData.details = "Doing Reviews";
+					Object.assign(presenceData, getReviewPresence());
+					break;
+				}
+				case pathname.match(/^\/subject-lessons\/[-\d/]+\/quiz$/)?.input: {
+					presenceData.details = "Practicing Lessons";
+					Object.assign(presenceData, getReviewPresence());
+					break;
+				}
+				case pathname.match(/^\/subject-lessons\/[-\d/]+/)?.input: {
+					presenceData.details = "Learning Lessons";
+					Object.assign(presenceData, getLessonPresence());
+					break;
+				}
+				case pathname.match(/^\/(radicals|kanji|vocabulary)\/.+$/)?.input: {
+					const [, type] = pathname.split("/");
+					let textDescription =
+						document.querySelector<HTMLElement>(
+							".mnemonic-content"
+						).textContent;
+					if (textDescription.length >= 50)
+						textDescription = `${textDescription.substring(0, 50)}...`;
 
-  switch (hostname) {
-    case "wanikani.com":
-    case "www.wanikani.com": {
-      switch (pathname) {
-        case "/":
-        case "/dashboard":
-        case "/login": {
-          const buttons = document.querySelectorAll(
-              ".lessons-and-reviews__button"
-            ),
-            level: HTMLAnchorElement = document.querySelector(
-              ".user-summary__attribute > a"
-            );
-          if (buttons.length === 2) {
-            const lessons: number = +buttons[0].querySelector("span").innerText,
-              reviews: number = +buttons[1].querySelector("span").innerText;
-            details = "Viewing Dashboard";
-            state = `${lessons} lessons | ${reviews} reviews`;
-            smallImageText = level.innerHTML;
-            if (lessons > reviews) {
-              if (lessons < 25) {
-                smallImageKey = "lessons-1";
-              } else if (lessons < 50) {
-                smallImageKey = "lessons-25";
-              } else if (lessons < 100) {
-                smallImageKey = "lessons-50";
-              } else if (lessons < 250) {
-                smallImageKey = "lessons-100";
-              } else if (lessons < 500) {
-                smallImageKey = "lessons-250";
-              } else {
-                smallImageKey = "lessons-500";
-              }
-            } else {
-              if (reviews < 1) {
-                smallImageKey = "reviews-0";
-              } else if (reviews < 50) {
-                smallImageKey = "reviews-1";
-              } else if (reviews < 100) {
-                smallImageKey = "reviews-50";
-              } else if (reviews < 250) {
-                smallImageKey = "reviews-100";
-              } else if (reviews < 500) {
-                smallImageKey = "reviews-250";
-              } else if (reviews < 1000) {
-                smallImageKey = "reviews-500";
-              } else {
-                smallImageKey = "reviews-1000";
-              }
-            }
-            if (eventType !== 1) {
-              elapsed = Math.round(Date.now() / 1000);
-              eventType = 1;
-            }
-          } else {
-            details = "Browsing...";
-            state = "Viewing Home Page";
-            if (eventType !== 0) {
-              elapsed = Math.round(Date.now() / 1000);
-              eventType = 0;
-            }
-          }
-          break;
-        }
-        case "/review":
-        case "/lesson": {
-          details = "Browsing...";
-          state =
-            pathname === "/lesson"
-              ? "Viewing Lesson Summary"
-              : "Viewing Reviews Summary";
-          if (eventType !== 0) {
-            elapsed = Math.round(Date.now() / 1000);
-            eventType = 0;
-          }
-          break;
-        }
-        case "/review/session": {
-          const available: number = +(
-              document.querySelector("#available-count") as HTMLElement
-            ).innerText,
-            completed: number = +(
-              document.querySelector("#completed-count") as HTMLElement
-            ).innerText,
-            correctRate: number = +(
-              document.querySelector("#correct-rate") as HTMLElement
-            ).innerText,
-            characterElement: HTMLDivElement =
-              document.querySelector("#character"),
-            characterText: string = characterElement.innerText,
-            characterType: string = characterElement.className,
-            questionType: string =
-              document.querySelector("#question-type").className;
-          details = "Doing Reviews";
-          state = `${characterText} | ${capitalize(characterType)} ${capitalize(
-            questionType
-          )}`;
-          smallImageText = `${completed} complete, ${available} remaining. (${correctRate}%)`;
-          smallImageKey = characterType;
-          if (eventType !== 2) {
-            elapsed = Math.round(Date.now() / 1000);
-            eventType = 2;
-          }
-          break;
-        }
-        case "/lesson/session": {
-          try {
-            const characterText: string =
-                document.querySelector("#character").textContent,
-              characterMeaning: string =
-                document.querySelector("#meaning").textContent,
-              completed: number =
-                +document.querySelector("#completed-count").textContent,
-              totalStats: NodeList =
-                document.querySelectorAll("#stats li > span"),
-              characterType: string =
-                document.querySelector("#main-info").className;
-            details = "Learning Lessons";
-            state = `${characterText} - ${characterMeaning}`;
-            smallImageKey = characterType;
-            smallImageText = `${totalStats[0].textContent} radicals | ${totalStats[1].textContent} kanji | ${totalStats[2].textContent} vocab | ${completed} complete`;
-            if (eventType !== 2) {
-              elapsed = Math.round(Date.now() / 1000);
-              eventType = 2;
-            }
-          } catch (err) {
-            // Likely practicing
-            const characterText: string =
-                document.querySelector("#character").textContent,
-              characterType: string =
-                document.querySelector("#main-info").className,
-              questionType: string =
-                document.querySelector("#question-type").className,
-              completed: number =
-                +document.querySelector("#completed-count").textContent,
-              totalStats: NodeList =
-                document.querySelectorAll("#stats li > span");
-            details = "Practicing Lessons";
-            state = `${characterText} | ${capitalize(
-              characterType
-            )} ${capitalize(questionType)}`;
-            smallImageKey = characterType;
-            smallImageText = `${totalStats[0].textContent} radicals | ${totalStats[1].textContent} kanji | ${totalStats[2].textContent} vocab | ${completed} complete`;
-          }
-          break;
-        }
-        case (pathname.match(/^\/(radicals|kanji|vocabulary)\/.+$/) || {})
-          .input: {
-          const type: string = pathname.split("/")[1],
-            text: string = (
-              document.querySelector(
-                `.${type.replace(/s$/, "")}-icon`
-              ) as HTMLElement
-            ).innerText,
-            textName: string = document.querySelector(
-              `.${type.replace(/s$/, "")}-icon`
-            ).parentNode.childNodes[4].textContent;
-          let textDescription: string = (
-            document.querySelector(".mnemonic-content") as HTMLElement
-          ).innerText;
-          if (textDescription.length >= 50) {
-            textDescription = textDescription.substr(0, 50) + "...";
-          }
-          details = "Browsing " + capitalize(type);
-          state = `${text} | ${textName}`;
-          smallImageText = textDescription;
-          smallImageKey = type.replace(/s$/, "");
-          break;
-        }
-        case (pathname.match(/^\/users\/.+$/) || {}).input: {
-          details = "Viewing User Profile";
-          state = document.querySelector(".username").textContent;
-          smallImageKey = "avatar";
-          if (eventType !== 0) {
-            elapsed = Math.round(Date.now() / 1000);
-            eventType = 0;
-          }
-          break;
-        }
-        default: {
-          details = "Browsing...";
-          state = "Viewing " + document.title.split(" / ").slice(1).join(" / ");
-          if (eventType !== 0) {
-            elapsed = Math.round(Date.now() / 1000);
-            eventType = 0;
-          }
-        }
-      }
-      break;
-    }
-    case "knowledge.wanikani.com": {
-      details = "Browsing WaniKani Knowledge...";
-      state = document.title.split(" | ")[0];
-      if (eventType !== 0) {
-        elapsed = Math.round(Date.now() / 1000);
-        eventType = 0;
-      }
-      break;
-    }
-    case "community.wanikani.com": {
-      if (eventType !== 0) {
-        elapsed = Math.round(Date.now() / 1000);
-        eventType = 0;
-      }
-      if (/^\/u\/.+$/.test(pathname)) {
-        details = "Viewing User Profile";
-        smallImageKey = "avatar";
-        state = document.querySelector(".username").textContent;
-        break;
-      }
-      details = "Browsing WaniKani Community...";
-      state = document.title.split(" - ")[0];
-      break;
-    }
-  }
+					presenceData.details = `Browsing ${capitalize(type)}`;
+					presenceData.state = `${
+						document.querySelector<HTMLSpanElement>(
+							`.${type.replace(/s$/, "")}-icon`
+						).textContent
+					} | ${
+						document.querySelector<HTMLSpanElement>(
+							`.${type.replace(/s$/, "")}-icon`
+						).parentNode.childNodes[4].textContent
+					}`;
+					presenceData.smallImageText = textDescription;
+					presenceData.smallImageKey = getTypeAsset(type.replace(/s$/, ""));
+					break;
+				}
+				case pathname.match(/^\/users\/.+$/)?.input: {
+					presenceData.details = "Viewing User Profile";
+					presenceData.state =
+						document.querySelector<HTMLSpanElement>(".username").textContent;
+					presenceData.smallImageKey = Assets.Avatar;
+					break;
+				}
+				default: {
+					presenceData.details = "Browsing";
+					presenceData.state = `Viewing ${document.title
+						.split(" / ")
+						.slice(1)
+						.join(" / ")}`;
+				}
+			}
+			break;
+		}
+		case "knowledge.wanikani.com": {
+			presenceData.details = "Browsing WaniKani Knowledge";
+			presenceData.state = document.title.split(" | ")[0];
+			break;
+		}
+		case "community.wanikani.com": {
+			if (/^\/u\/.+$/.test(pathname)) {
+				presenceData.details = "Viewing User Profile";
+				presenceData.smallImageKey = Assets.Avatar;
+				presenceData.state =
+					document.querySelector<HTMLHeadingElement>(".username").textContent;
+				break;
+			}
+			presenceData.details = "Browsing WaniKani Community";
+			presenceData.state = document.title.split(" - ")[0];
+			break;
+		}
+	}
 
-  if (typeof details !== "undefined") {
-    data.details = details;
-  }
-  if (typeof state !== "undefined") {
-    data.state = state;
-  }
-  if (typeof smallImageKey !== "undefined") {
-    data.smallImageKey = smallImageKey;
-  }
-  if (typeof smallImageText !== "undefined") {
-    data.smallImageText = smallImageText;
-  }
-  if (typeof largeImageKey !== "undefined") {
-    data.largeImageKey = largeImageKey;
-  }
-  if (eventType !== -1) {
-    data.startTimestamp = elapsed;
-  }
-
-  presence.setActivity(data);
+	presence.setActivity(presenceData);
 });

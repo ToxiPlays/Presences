@@ -1,92 +1,82 @@
 const presence = new Presence({
-    clientId: "861594094623129691"
-  }),
-  browsingStamp = Math.floor(Date.now() / 1000);
+		clientId: "861594094623129691",
+	}),
+	browsingTimestamp = Math.floor(Date.now() / 1000);
+
+const enum Assets {
+	Logo = "https://cdn.rcd.gg/PreMiD/websites/I/iBroadcast/assets/logo.png",
+}
 
 presence.on("UpdateData", async () => {
-  const presenceData: PresenceData = {
-      largeImageKey: "ibroadcast_logo",
-      startTimestamp: browsingStamp
-    },
-    { hostname } = document.location;
+	const presenceData: PresenceData = {
+			largeImageKey:
+				document.querySelector<HTMLImageElement>(
+					".mgr-container-artwork-single,.mgr-player-artwork-image"
+				)?.src ?? Assets.Logo,
+			startTimestamp: browsingTimestamp,
+		},
+		cover = await presence.getSetting<boolean>("cover"),
+		{ hostname } = document.location;
 
-  if (hostname.startsWith("media")) {
-    const controls: HTMLImageElement = document.querySelector(
-        "img.mgr-player-play"
-      ),
-      album: HTMLDivElement = document.querySelector(".mgr-player-album"),
-      pageTitle: HTMLDivElement = document.querySelector(".mgr-page-title"),
-      playlistDetails: HTMLDivElement = document.querySelector(
-        ".mgr-list-tracks-header-info"
-      );
+	if (hostname.startsWith("edit")) presenceData.details = "Editing Library";
+	else if (hostname.startsWith("beta") || hostname.startsWith("media")) {
+		const playlist = document.querySelector(".mgr-list-tracks-title"),
+			popup = document.querySelector(
+				"div.mgr-modal.mgr-modal-opaque > div > div.mgr-title"
+			);
 
-    if (controls && controls.src.includes("pause")) {
-      const currentTime: HTMLDivElement =
-          document.querySelector(".jp-current-time"),
-        duration: HTMLDivElement = document.querySelector(".jp-duration");
+		if (document.querySelector(".icon-player-pause")) {
+			presenceData.type = ActivityType.Listening;
+			const title = document.querySelector(".mgr-player-title"),
+				artist = document.querySelector(".mgr-player-artist"),
+				currentTime = document.querySelector(".mgr-player-current-time"),
+				duration = document.querySelector(".mgr-player-duration");
 
-      presenceData.details = document.title;
-      if (album) presenceData.state = album.innerText;
-      if (currentTime && duration) {
-        const currTime = presence.timestampFromFormat(currentTime.innerText),
-          dur = presence.timestampFromFormat(duration.innerText);
+			if (title && artist) {
+				presenceData.details = `${title.textContent} by ${artist.textContent}`;
+				presenceData.smallImageKey = Assets.Play;
+				presenceData.smallImageText = "Listening";
+			}
+			if (currentTime && duration) {
+				[presenceData.startTimestamp, presenceData.endTimestamp] =
+					presence.getTimestamps(
+						presence.timestampFromFormat(currentTime.textContent),
+						presence.timestampFromFormat(duration.textContent)
+					);
+			}
+		} else if (playlist) {
+			presenceData.details = "Looking at a playlist";
+			presenceData.state = playlist?.textContent ?? "";
+		} else if (popup?.textContent)
+			presenceData.details = `Viewing ${popup.textContent}`;
+		else {
+			switch (
+				document.querySelector(".mgr-menu-item.mgr-menu-item-selected")
+					?.textContent
+			) {
+				case "Album Artists": {
+					const albumSelected = document.querySelector(
+						".mgr-list-tracks-title"
+					)?.textContent;
 
-        [, presenceData.endTimestamp] = presence.getTimestamps(currTime, dur);
-      }
-    } else if (pageTitle)
-      presenceData.details = `Viewing ${pageTitle.innerText}`;
-    else if (playlistDetails) {
-      const type: HTMLDivElement = playlistDetails.querySelector(
-          ".mgr-list-tracks-header-type"
-        ),
-        name: HTMLDivElement = playlistDetails.querySelector(
-          ".mgr-list-tracks-header-name"
-        );
+					if (albumSelected) {
+						presenceData.details = "Viewing album artists";
+						presenceData.state = albumSelected;
+					} else {
+						presenceData.details = "Viewing all album artists";
+						presenceData.largeImageKey = Assets.Logo;
+					}
+					break;
+				}
+				default: {
+					presenceData.details = "Browsing...";
+				}
+			}
+		}
+	}
 
-      if (type && type.innerText !== "")
-        presenceData.details = `Viewing ${type.innerText}`;
-      if (name) {
-        if (!presenceData.details) presenceData.details = name.innerText;
-        else presenceData.state = name.innerText;
-      }
-    } else presenceData.details = "At homepage";
-  } else if (hostname.startsWith("edit"))
-    presenceData.details = "Editing Library";
-  else if (hostname.startsWith("beta")) {
-    const pause: HTMLDivElement = document.querySelector(".icon-player-pause"),
-      playlist: HTMLDivElement = document.querySelector(
-        ".mgr-list-tracks-title"
-      ),
-      popup: HTMLDivElement = document.querySelector(
-        "body > div.mgr-modal.mgr-modal-opaque > div > div.mgr-title"
-      );
-
-    if (pause) {
-      const title: HTMLDivElement = document.querySelector(".mgr-player-title"),
-        artist: HTMLDivElement = document.querySelector(".mgr-player-artist"),
-        currentTime: HTMLDivElement = document.querySelector(
-          ".mgr-player-current-time"
-        ),
-        duration: HTMLDivElement = document.querySelector(
-          ".mgr-player-duration"
-        );
-
-      if (title && artist)
-        presenceData.details = `${title.innerText} by ${artist.innerText}`;
-      if (currentTime && duration) {
-        const currTime = presence.timestampFromFormat(currentTime.innerText),
-          dur = presence.timestampFromFormat(duration.innerText);
-        [, presenceData.endTimestamp] = presence.getTimestamps(currTime, dur);
-      }
-    } else if (playlist) {
-      presenceData.details = "Looking at playlist";
-      presenceData.state = playlist.innerText;
-    } else if (popup) presenceData.details = `Viewing ${popup.innerText}`;
-    else presenceData.details = "At homepage";
-  }
-
-  if (!presenceData.details) {
-    presence.setTrayTitle();
-    presence.setActivity();
-  } else presence.setActivity(presenceData);
+	if (!cover && presenceData.largeImageKey !== Assets.Logo)
+		presenceData.largeImageKey = Assets.Logo;
+	if (presenceData.details) presence.setActivity(presenceData);
+	else presence.setActivity();
 });

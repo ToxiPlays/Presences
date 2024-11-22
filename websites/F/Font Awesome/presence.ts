@@ -1,66 +1,116 @@
-const pPresence = new Presence({
-    clientId: "820023496934817804"
-  }),
-  pBrowsing = Math.floor(Date.now() / 1000);
+import {
+	batch,
+	browsingTimestamp,
+	getIconImage,
+	presence,
+	registerSlideshowKey,
+	slideshow,
+} from "./util";
 
-pPresence.on("UpdateData", async () => {
-  const pData: PresenceData = {
-      largeImageKey: "icon2",
-      startTimestamp: pBrowsing
-    },
-    pPage = window.location.pathname;
+presence.on("UpdateData", async () => {
+	const presenceData: PresenceData = {
+			largeImageKey:
+				"https://cdn.rcd.gg/PreMiD/websites/F/Font%20Awesome/assets/logo.png",
+			startTimestamp: browsingTimestamp,
+			type: ActivityType.Playing,
+			name: "Font Awesome",
+		},
+		{ pathname, href, search } = document.location,
+		pathList = pathname.split("/").filter(Boolean);
 
-  if (pPage == "/") {
-    pData.details = "Browsing Page:";
-    pData.state = "Main";
-  } else if (pPage.includes("/icons")) {
-    const urlParams: URLSearchParams = new URLSearchParams(
-        window.location.search
-      ),
-      myParam: string = urlParams.get("q");
+	let usesSlideshow = false;
 
-    if (myParam === null) {
-      const icon: HTMLElement = document.querySelector(
-        "#page-top > div.view.flex.flex-column.min-vh-100.db-pr > div.flex-grow-1.flex-shrink-0.flex-basis-auto > div > div.ph6-l > div > section > header > div.flex.flex-column.flex-row-xl.items-center-xl.justify-between-xl.mb2.mb4-l > h1 > span"
-      );
-      if (icon === null) {
-        pData.details = "Browsing Page:";
-        pData.state = "Icons";
-      } else {
-        pData.details = "Viewing Icon:";
-        pData.state = icon.textContent;
-        pData.buttons = [
-          {
-            label: "View Icon",
-            url: document.URL
-          }
-        ];
-      }
-    } else {
-      pData.details = "Searching:";
-      pData.state = myParam;
-    }
-  } else if (pPage == "/start") {
-    pData.details = "Browsing Page:";
-    pData.state = "Start";
-  } else if (pPage == "/support") {
-    pData.details = "Browsing Page:";
-    pData.state = "Support";
-  } else if (pPage == "/plans") {
-    pData.details = "Browsing Page:";
-    pData.state = "Plans";
-  } else if (pPage == "/plans/standard") {
-    pData.details = "Browsing Page:";
-    pData.state = "Plan Standard";
-  } else if (pPage == "/sessions/sign-in") {
-    pData.details = "Browsing Page:";
-    pData.state = "Sign In";
-  }
+	switch (pathList[0] ?? "/") {
+		case "/": {
+			presenceData.details = "Browsing Home Page";
+			break;
+		}
+		case "docs": {
+			presenceData.details = "Reading Documentation";
+			if (pathList[1]) {
+				presenceData.state = document.querySelector(".section+h1");
+				presenceData.buttons = [{ label: "Read Docs", url: href }];
+			}
+			break;
+		}
+		case "icons": {
+			if (pathList[1] === "categories") {
+				if (pathList[2]) {
+					const header = document.querySelector("h2");
+					presenceData.details = "Viewing Icon Category";
+					presenceData.state = header;
+					presenceData.smallImageKey = await getIconImage(
+						header.querySelector("i")
+					);
+					presenceData.smallImageText = header;
+					presenceData.buttons = [{ label: "View Category", url: href }];
+				} else presenceData.details = "Browsing Categories";
+			} else if (pathList[1]) {
+				presenceData.details = "Viewing Icon";
+				presenceData.state = document.querySelector(
+					".icon-detail h1+button,#icon-landing h1+button"
+				).childNodes[1];
+				presenceData.smallImageKey = await getIconImage(
+					document.querySelector(".icon-details-preview-rendering i"),
+					getComputedStyle(document.querySelector(".icon-details-preview.card"))
+						.backgroundColor
+				);
+				const family =
+					document.querySelector<HTMLSelectElement>("#icon_family");
+				if (family) presenceData.smallImageText = family.value;
 
-  if (pData.details == null) {
-    pPresence.setTrayTitle();
-    pPresence.setActivity();
-  } else {
-    pPresence.setActivity(pData);
-  }
+				presenceData.buttons = [{ label: "View Icon", url: href }];
+			} else presenceData.details = "Browsing Icons";
+			break;
+		}
+		case "search": {
+			const searchQuery = new URLSearchParams(search).get("q");
+			presenceData.details = "Searching Icons";
+			if (searchQuery) {
+				presenceData.state = searchQuery;
+				const iconCards = [
+					...document.querySelectorAll("#icons-results > article"),
+				];
+				if (iconCards.length) {
+					const key = `search-${searchQuery}-${iconCards[0].id}`;
+					registerSlideshowKey(key);
+					usesSlideshow = true;
+					const batchData = await batch(key, iconCards, async card => {
+						const tempData: PresenceData = {
+							...presenceData,
+							smallImageKey: await getIconImage(card.querySelector("i")),
+							smallImageText: card.id,
+						};
+						return tempData;
+					});
+					for (const data of batchData)
+						slideshow.addSlide(data.smallImageText as string, data, 5000);
+				}
+			}
+			break;
+		}
+		case "start": {
+			presenceData.details = "Getting Started";
+			break;
+		}
+		case "support": {
+			presenceData.details = "Browsing Support";
+			break;
+		}
+		case "plans": {
+			if (pathList[1]) {
+				presenceData.details = "Viewing Plan";
+				presenceData.state = document.querySelector("h3");
+			} else presenceData.details = "Browsing Plans";
+			break;
+		}
+		case "sessions": {
+			presenceData.details = "Signing In";
+			break;
+		}
+	}
+
+	if (usesSlideshow) presence.setActivity(slideshow);
+	else if (!presenceData.details) presence.clearActivity();
+	else presence.setActivity(presenceData);
 });

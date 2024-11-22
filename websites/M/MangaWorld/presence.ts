@@ -1,194 +1,202 @@
 const presence = new Presence({
-  clientId: "667275999288754182"
-});
+		clientId: "860298084512038964",
+	}),
+	browsingTimestamp = Math.floor(Date.now() / 1000);
 
-const browsingStamp = Math.floor(Date.now() / 1000);
-let manganame;
-let chapternumber;
-let pagenumber;
+const enum Assets {
+	Logo = "https://cdn.rcd.gg/PreMiD/websites/M/MangaWorld/assets/logo.png",
+	LogoDark = "https://cdn.rcd.gg/PreMiD/websites/M/MangaWorld/assets/0.png",
+	LogoLight = "https://cdn.rcd.gg/PreMiD/websites/M/MangaWorld/assets/1.png",
+	Home = "https://cdn.rcd.gg/PreMiD/websites/M/MangaWorld/assets/2.png",
+	Archive = "https://cdn.rcd.gg/PreMiD/websites/M/MangaWorld/assets/3.png",
+	Bookmark = "https://cdn.rcd.gg/PreMiD/websites/M/MangaWorld/assets/4.png",
+	Brush = "https://cdn.rcd.gg/PreMiD/websites/M/MangaWorld/assets/5.png",
+	Calendar = "https://cdn.rcd.gg/PreMiD/websites/M/MangaWorld/assets/6.png",
+	Pen = "https://cdn.rcd.gg/PreMiD/websites/M/MangaWorld/assets/7.png",
+	Plus = "https://cdn.rcd.gg/PreMiD/websites/M/MangaWorld/assets/8.png",
+	Hash = "https://cdn.rcd.gg/PreMiD/websites/M/MangaWorld/assets/9.png",
+	Journals = "https://cdn.rcd.gg/PreMiD/websites/M/MangaWorld/assets/10.png",
+	File = "https://cdn.rcd.gg/PreMiD/websites/M/MangaWorld/assets/11.png",
+	Calendar2 = "https://cdn.rcd.gg/PreMiD/websites/M/MangaWorld/assets/12.png",
+	Book2 = "https://cdn.rcd.gg/PreMiD/websites/M/MangaWorld/assets/13.png",
+	Slash = "https://cdn.rcd.gg/PreMiD/websites/M/MangaWorld/assets/14.png",
+	File2 = "https://cdn.rcd.gg/PreMiD/websites/M/MangaWorld/assets/15.png",
+	Tags = "https://cdn.rcd.gg/PreMiD/websites/M/MangaWorld/assets/16.png",
+	Journal = "https://cdn.rcd.gg/PreMiD/websites/M/MangaWorld/assets/17.png",
+	File3 = "https://cdn.rcd.gg/PreMiD/websites/M/MangaWorld/assets/18.png",
+	Book3 = "https://cdn.rcd.gg/PreMiD/websites/M/MangaWorld/assets/19.png",
+	Sort = "https://cdn.rcd.gg/PreMiD/websites/M/MangaWorld/assets/20.png",
+}
 
 presence.on("UpdateData", async () => {
-  const data: PresenceData = {
-    largeImageKey: "mwnew"
-  };
+	const presenceData: PresenceData = {
+			largeImageKey: Assets.Logo,
+		},
+		/* Query dell'URI - URI query */
+		searchParams = new URLSearchParams(
+			decodeURIComponent(document.location.search)
+				.replace("?", "")
+				.replaceAll("-", " ")
+		);
 
-  if (document.location.href == "https://mangaworld.tv/") {
-    data.smallImageKey = "search";
-    data.smallImageText = "Homepage";
-    data.details = "Navigando...";
-    data.startTimestamp = browsingStamp;
-    presence.setActivity(data);
-  } else if (document.location.pathname.endsWith("/about-us/")) {
-    data.smallImageKey = "tec";
-    data.smallImageText = "Termini e Condizioni";
-    data.details = "Guardando i Termini e Condizioni";
-    data.startTimestamp = browsingStamp;
-    presence.setActivity(data);
-  } else if (document.location.pathname.endsWith("/contact/")) {
-    data.smallImageKey = "info";
-    data.smallImageText = "Info";
-    data.details = "Guardando le Info su MangaWorld";
-    data.startTimestamp = browsingStamp;
-    presence.setActivity(data);
-  } else if (document.location.href.endsWith("/user-settings/")) {
-    data.smallImageKey = "profile";
-    data.smallImageText = "Profilo";
-    data.details = "Nel suo profilo";
-    data.startTimestamp = browsingStamp;
-    presence.setActivity(data);
-  } else if (document.location.href.endsWith("?tab=bookmark")) {
-    data.smallImageKey = "favorite";
-    data.smallImageText = "Preferiti";
-    data.details = "Nei suoi Preferiti";
-    data.startTimestamp = browsingStamp;
-    presence.setActivity(data);
-  } else if (document.location.href.endsWith("?tab=history")) {
-    data.smallImageKey = "history";
-    data.smallImageText = "Cronologia";
-    data.details = "Nella sua Cronologia";
-    data.startTimestamp = browsingStamp;
-    presence.setActivity(data);
-  } else if (document.location.href.endsWith("?tab=reader-settings")) {
-    data.smallImageKey = "settings";
-    data.smallImageText = "Opzioni";
-    data.details = "Nelle sue Opzioni";
-    data.startTimestamp = browsingStamp;
-    presence.setActivity(data);
-  } else if (document.location.href.endsWith("?tab=account-settings")) {
-    data.smallImageKey = "settings";
-    data.smallImageText = "Impostazioni";
-    data.details = "Nelle sue Impostazioni";
-    data.startTimestamp = browsingStamp;
-    presence.setActivity(data);
-  } else if (document.location.pathname.endsWith("/listing-simple-list/")) {
-    data.smallImageKey = "new";
-    data.smallImageText = "Nuove Uscito";
-    data.details = "Sfogliando le Ultime Uscite";
-    data.startTimestamp = browsingStamp;
-    presence.setActivity(data);
-  } else if (document.location.href.includes("/?s=")) {
-    if (document.location.pathname.startsWith("/page/")) {
-      data.smallImageKey = "search";
-      data.smallImageText = document.title
-        .split("cercato ")[1]
-        .split(" - Pagina")[0];
-      data.details =
-        "Sta cercando: " +
-        document.title.split("cercato ")[1].split(" - Pagina")[0];
-      data.state = document.title
-        .split(" - ")[1]
-        .replace(" - MangaWorld", "")
-        .split(" di")[0]
-        .replace("Pagina", "Pagina:");
-      data.startTimestamp = browsingStamp;
-      presence.setActivity(data);
-    } else {
-      data.smallImageKey = "search";
-      data.smallImageText = document.title
-        .split("cercato ")[1]
-        .split(" - MangaWorld")[0];
-      data.details =
-        "Sta cercando: " +
-        document.title.split("cercato ")[1].split(" - MangaWorld")[0];
-      data.state = "Pagina: 1";
-      data.startTimestamp = browsingStamp;
-      presence.setActivity(data);
-    }
-  } else if (document.location.pathname.startsWith("/manga-genre/")) {
-    if (document.location.pathname.includes("/page/")) {
-      data.smallImageKey = "search";
-      data.smallImageText = document.title.split(" Archivi")[0];
-      data.details = "Naviga nel Genere:";
-      data.state =
-        document.title.split(" Archivi")[0] +
-        document.title
-          .split(" Archivi")[1]
-          .split(" - MangaWorld")[0]
-          .split(" di")[0]
-          .replace(" - Pagina ", "｜Pag. ");
-      data.startTimestamp = browsingStamp;
-      presence.setActivity(data);
-    } else {
-      data.smallImageKey = "search";
-      data.smallImageText = document.title.split(" Archivi")[0];
-      data.details = "Naviga nel Genere:";
-      data.state = document.title.split(" Archivi")[0] + "｜Pag. 1";
-      data.startTimestamp = browsingStamp;
-      presence.setActivity(data);
-    }
-  } else if (document.location.pathname.startsWith("/manga/")) {
-    if (document.location.pathname.match("/capitolo")) {
-      manganame = document.title
-        .replace(" - MangaWorld", "")
-        .replace(" scan ITA", "");
-      if (manganame.includes("- Scan ITA")) {
-        manganame = manganame.replace(" - Scan ITA", "");
-      }
-      chapternumber = document.location.href
-        .split("capitolo-")[1]
-        .split("/p/")[0]
-        .replace("-", ".");
-      pagenumber = document.location.href.split("/p/")[1].replace("/", "");
-      data.smallImageKey = "reading";
-      data.smallImageText = "Legge";
-      data.details = "Legge: " + manganame;
-      data.state = "Capitolo: " + chapternumber + "｜Pag. " + pagenumber;
-      data.startTimestamp = browsingStamp;
-      presence.setActivity(data);
-    } else if (document.location.pathname.match("/oneshot")) {
-      pagenumber = document.location.href.split("/p/")[1].replace("/", "");
-      manganame = document.title
-        .replace(" - MangaWorld", "")
-        .replace(" scan ITA", "");
-      if (manganame.includes("- Scan ITA")) {
-        manganame = manganame.replace(" - Scan ITA", "");
-      }
-      data.smallImageKey = "reading";
-      data.smallImageText = "Legge";
-      data.details = "Legge: " + manganame;
-      data.state = "Oneshot｜Pag. " + pagenumber;
-      data.startTimestamp = browsingStamp;
-      presence.setActivity(data);
-    } else if (document.location.href.endsWith("/?m_orderby=trending")) {
-      data.smallImageKey = "trending";
-      data.smallImageText = "Tendenze";
-      data.details = "Visualizza le Tendenze";
-      data.startTimestamp = browsingStamp;
-      presence.setActivity(data);
-    } else {
-      manganame = document.title
-        .replace(" - MangaWorld", "")
-        .replace(" scan ITA", "");
-      if (manganame.includes("- Scan ITA")) {
-        manganame = manganame.replace(" - Scan ITA", "");
-      }
-      data.smallImageKey = "viewing";
-      data.smallImageText = "Visualizza";
-      data.details = "Visualizza il Manga:";
-      data.state = manganame;
-      data.startTimestamp = browsingStamp;
-      presence.setActivity(data);
-    }
-  } else if (document.location.pathname.startsWith("/manga-release/")) {
-    data.smallImageKey = "search";
-    data.smallImageText = document.title.split("Archivi - ")[0];
-    data.details =
-      "Naviga nei manga del " + document.title.split("Archivi - ")[0];
-    data.startTimestamp = browsingStamp;
-    presence.setActivity(data);
-  } else if (document.location.pathname.startsWith("/manga-artist/")) {
-    data.smallImageKey = "search";
-    data.smallImageText = document.title.split("Archivi - ")[0];
-    data.details = "Visualizza l'Artista:";
-    data.state = document.title.split("Archivi - ")[0];
-    data.startTimestamp = browsingStamp;
-    presence.setActivity(data);
-  } else if (document.location.pathname.startsWith("/manga-author/")) {
-    data.smallImageKey = "search";
-    data.smallImageText = document.title.split("Archivi - ")[0];
-    data.details = "Visualizza l'Autore:";
-    data.state = document.title.split("Archivi - ")[0];
-    data.startTimestamp = browsingStamp;
-    presence.setActivity(data);
-  }
+	/* Homepage */
+	if (document.location.pathname === "/") {
+		presenceData.smallImageKey = Assets.Home;
+		presenceData.smallImageText = "Homepage";
+		presenceData.details = "Nella homepage";
+	} else if (document.location.href.includes("/bookmarks/")) {
+		/* Preferiti - Bookmarks*/
+		presenceData.smallImageKey = Assets.Bookmark;
+		presenceData.smallImageText = "Preferiti";
+		presenceData.details = "Sfogliando i preferiti";
+
+		const categories: { [page: string]: string } = {
+				"RE-READING": "In rilettura",
+				COMPLETED: "Completati",
+				ON_HOLD: "In pausa",
+				PLAN_TO_READ: "Da leggere",
+				DROPPED: "Droppati",
+				READING: "In lettura",
+			},
+			category = document.location.pathname.split("/")[3];
+		if (category in categories) presenceData.state = categories[category];
+	} else if (document.location.href.includes("keyword=")) {
+		/* ----- ARCHIVIO - ARCHIVE ----- */
+		/* Ricerca per nome - Search by name */
+		presenceData.smallImageKey = Assets.Search;
+		presenceData.smallImageText = "Ricerca per nome";
+		presenceData.details = "Cercando:";
+		presenceData.state = `"${searchParams.get("keyword")}"`;
+	} else if (document.location.href.includes("author=")) {
+		/* Ricerca per autore - Search by author */
+		presenceData.smallImageKey = Assets.Pen;
+		presenceData.smallImageText = "Ricerca per autore";
+		presenceData.details = "Sfogliando i contenuti dell'autore:";
+		presenceData.state = searchParams.get("author");
+	} else if (document.location.href.includes("artist=")) {
+		/* Ricerca per artista - Search by artist */
+		presenceData.smallImageKey = Assets.Brush;
+		presenceData.smallImageText = "Ricerca per artista";
+		presenceData.details = "Sfogliando i contenuti dell'artista:";
+		presenceData.state = searchParams.get("artist");
+	} else if (document.location.href.includes("genre=")) {
+		/* Ricerca per genere - Search by genre */
+		const genre = searchParams.get("genre").split(" ");
+		for (let i = 0; i < genre.length; i++)
+			genre[i] = genre[i][0].toUpperCase() + genre[i].substr(1);
+		presenceData.smallImageKey = Assets.Tags;
+		presenceData.smallImageText = "Ricerca per genere";
+		presenceData.details = "Sfogliando i contenuti del genere:";
+		presenceData.state = genre.join(" ");
+	} else if (document.location.href.includes("year=")) {
+		/* Ricerca per anno - Search by year of release */
+		presenceData.smallImageKey = Assets.Calendar2;
+		presenceData.smallImageText = "Ricerca per anno";
+		presenceData.details = "Sfogliando i contenuti dell'anno:";
+		presenceData.state = searchParams.get("year");
+	} else if (document.location.href.includes("status=")) {
+		/* Ricerca per stato - Search by status */
+		presenceData.smallImageKey = Assets.Slash;
+		presenceData.smallImageText = "Ricerca per stato";
+		presenceData.details = "Sfogliando i contenuti:";
+
+		const statuses: { [value: string]: string } = {
+				dropped: "Droppati",
+				ongoing: "In corso d'opera",
+				completed: "Finiti",
+				paused: "In pausa",
+				canceled: "Cancellati",
+			},
+			status = searchParams.get("status");
+		if (status in statuses) presenceData.state = statuses[status];
+	} else if (document.location.href.includes("type=")) {
+		/* Ricerca per formato - Search by format */
+		const rawtype = searchParams.get("type");
+		presenceData.smallImageKey = Assets.File3;
+		presenceData.smallImageText = "Ricerca per formato";
+		presenceData.details = "Sfogliando i contenuti in formato:";
+		presenceData.state = rawtype[0].toUpperCase() + rawtype.substring(1);
+	} else if (document.location.href.includes("sort=")) {
+		/* Ricerca per ordinamento - Order by */
+		presenceData.smallImageKey = Assets.Sort;
+		presenceData.smallImageText = "Ricerca per ordinamento";
+		presenceData.details = "Sfogliando i contenuti:";
+
+		const sorts: { [page: string]: string } = {
+				"a z": "Ordinati dalla A alla Z",
+				"z a": "Ordinati dalla Z alla A",
+				// eslint-disable-next-line camelcase
+				most_read: "Più letti",
+				// eslint-disable-next-line camelcase
+				less_read: "Meno letti",
+				newest: "Più recenti",
+				oldest: "Meno recenti",
+			},
+			sort = searchParams.get("sort");
+		if (sort in sorts) presenceData.state = sorts[sort];
+	} else if (document.location.href.includes("archive")) {
+		/* Pagina principale - Main page */
+		presenceData.smallImageKey = Assets.Archive;
+		presenceData.smallImageText = "Archivio";
+		presenceData.details = "Nell'archivio";
+		presenceData.state = "Sfogliando...";
+	} else if (document.location.href.includes("/manga/")) {
+		/* ----- LETTURA - READING ----- */
+		/* Nell'e-reader - In the e-reader */
+		if (document.location.href.includes("/read/")) {
+			const [mangaName] = document.title
+					.replace(" Scan ITA - MangaWorld", "")
+					.replace(" Oneshot", "")
+					.split("Capitolo"),
+				[, chapter0n] = document.title
+					.replace(" Scan ITA - MangaWorld", "")
+					.split("Capitolo");
+			let chapter = chapter0n;
+			if (parseInt(chapter0n, 10) < 10) chapter = chapter0n.replace("0", "");
+			let chapterString = "Capitolo";
+			if (typeof chapter0n === "undefined")
+				(chapterString = "Oneshot"), (chapter = "");
+
+			presenceData.smallImageKey = Assets.Book3;
+			presenceData.smallImageText = mangaName;
+			presenceData.details = `Leggendo: ${mangaName}`;
+			presenceData.state = `${chapterString + chapter} | Pagina ${
+				document.location.pathname.split("/")[6]
+			}`;
+			presenceData.buttons = [
+				{
+					label: "Leggilo anche tu!",
+					url: document.location.href.replace(/.$/, "1"),
+				},
+				{
+					label: "Vai alla pagina del manga!",
+					url: document.location.href.replace(/read\/.*/g, ""),
+				},
+			];
+		} else {
+			/* Nella pagina principale del manga - In the manga's main page */
+			const pageName = document.title.replace(" Scan ITA - MangaWorld", "");
+			presenceData.smallImageKey = Assets.Viewing;
+			presenceData.smallImageText = pageName;
+			presenceData.details = "Visualizzando la pagina di:";
+			presenceData.state = pageName;
+			presenceData.buttons = [
+				{
+					label: "Vai alla pagina del manga!",
+					url: document.location.href,
+				},
+			];
+		}
+	} else {
+		/* In qualunque altra pagina - In any other page */
+		const pageName = document.title.replace("MangaWorld - ", "");
+		presenceData.smallImageKey = Assets.Viewing;
+		presenceData.smallImageText = `"${pageName}"`;
+		presenceData.details = "Visualizzando la pagina:";
+		presenceData.state = `"${pageName}"`;
+	}
+	if (presenceData.details) {
+		presenceData.startTimestamp = browsingTimestamp;
+		presence.setActivity(presenceData);
+	}
 });

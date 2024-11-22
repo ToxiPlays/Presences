@@ -1,98 +1,97 @@
 const presence = new Presence({
-  clientId: "761617743593209869"
+	clientId: "761617743593209869",
 });
 
 function getTime() {
-  const time = document
-    .getElementsByClassName("vjs-current-time-display")[0]
-    .textContent.split(":")
-    .map((n) => Number(n));
-  if (time.length === 3) {
-    return Date.now() - (time[0] * 3600 + time[1] * 60 + time[2]) * 1000;
-  } else {
-    return Date.now() - (time[0] * 60 + time[1]) * 1000;
-  }
+	const time = document
+		.querySelector(".vjs-current-time-display")
+		.textContent.split(":")
+		.map(n => Number(n));
+	if (time.length === 3)
+		return Date.now() - (time[0] * 3600 + time[1] * 60 + time[2]) * 1000;
+	else return Date.now() - (time[0] * 60 + time[1]) * 1000;
 }
 
 presence.on("UpdateData", async () => {
-  const presenceData: PresenceData = {
-    largeImageKey: "icon",
-    smallImageKey: "more"
-  };
-  let clear = false;
+	const presenceData: PresenceData = {
+		largeImageKey:
+			"https://cdn.rcd.gg/PreMiD/websites/I/Invidious/assets/logo.png",
+		smallImageKey:
+			"https://cdn.rcd.gg/PreMiD/websites/I/Invidious/assets/0.png",
+	};
+	let clear = false;
 
-  switch (document.location.pathname.replace("/feed", "").split("/")[1]) {
-    case "":
-    case "popular":
-      presenceData.details = "Browsing popular videos";
-      break;
+	const privacy = await presence.getSetting<boolean>("privacy");
 
-    case "trending":
-      presenceData.details = "Browsing trending videos";
-      break;
+	switch (document.location.pathname.replace("/feed", "").split("/")[1]) {
+		case "":
+		case "popular":
+			presenceData.details = "Browsing popular videos";
+			break;
 
-    case "subscriptions":
-    case "subscription_manager":
-      presenceData.details = "Browsing subscriptions";
-      break;
+		case "trending":
+			presenceData.details = "Browsing trending videos";
+			break;
 
-    case "view_all_playlists":
-      presenceData.details = "Browsing playlists";
-      break;
+		case "subscriptions":
+		case "subscription_manager":
+			presenceData.details = "Browsing subscriptions";
+			break;
 
-    case "history":
-      presenceData.details = "Browsing watch history";
-      break;
+		case "view_all_playlists":
+			presenceData.details = "Browsing playlists";
+			break;
 
-    case "change_password":
-    case "clear_watch_history":
-    case "data_control":
-    case "delete_account":
-    case "licenses":
-    case "preferences":
-    case "privacy":
-    case "token_manager":
-      presenceData.details = "Managing preferences";
-      break;
+		case "history":
+			presenceData.details = "Browsing watch history";
+			break;
 
-    case "watch":
-      presenceData.smallImageKey = document.getElementsByClassName(
-        "vjs-playing"
-      )[0]
-        ? "play"
-        : "pause";
-      presenceData.details = document
-        .getElementsByTagName("h1")[0]
-        .textContent.trim();
-      presenceData.state = document.getElementById("channel-name").textContent;
-      presenceData.startTimestamp = document.getElementsByClassName(
-        "vjs-playing"
-      )[0]
-        ? getTime()
-        : undefined;
-      break;
+		case "change_password":
+		case "clear_watch_history":
+		case "data_control":
+		case "delete_account":
+		case "licenses":
+		case "preferences":
+		case "privacy":
+		case "token_manager":
+			presenceData.details = "Managing preferences";
+			break;
 
-    case "playlist":
-      presenceData.details = "Viewing playlist";
-      presenceData.state = document.getElementsByTagName("h3")[0].textContent;
-      break;
+		case "watch":
+			if (!privacy) {
+				presenceData.smallImageKey = document.querySelector(".vjs-playing")
+					? Assets.Play
+					: Assets.Pause;
+				presenceData.details = document.querySelector("h1").textContent.trim();
+				presenceData.state =
+					document.querySelector("#channel-name").textContent;
+				if (document.querySelector(".vjs-playing"))
+					presenceData.startTimestamp = getTime();
+			}
+			break;
 
-    case "channel":
-      presenceData.details = "Viewing channel";
-      presenceData.state = document
-        .getElementsByClassName("channel-profile")[0]
-        .textContent.trim();
-      break;
+		case "playlist":
+			presenceData.details = "Viewing playlist";
+			if (!privacy)
+				presenceData.state = document.querySelector("h3").textContent;
+			break;
 
-    default:
-      clear = true;
-      break;
-  }
+		case "channel":
+			presenceData.details = "Viewing channel";
 
-  if (clear) {
-    presence.setTrayTitle();
-    presence.setActivity();
-  } else {
-    presence.setActivity(presenceData);
-  }
+			if (!privacy) {
+				presenceData.state = document
+					.querySelector(".channel-profile")
+					.textContent.trim();
+			}
+
+			break;
+
+		default:
+			clear = true;
+			break;
+	}
+
+	if (clear) presence.setActivity();
+	else presence.setActivity(presenceData);
 });

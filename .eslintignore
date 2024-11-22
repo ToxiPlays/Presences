@@ -1,8 +1,6 @@
 node_modules
-
+tools
 .vscode
-.npmrc
-.github
-
-*.js
-*.d.ts
+**/*.js
+*.json
+cli

@@ -1,91 +1,70 @@
 const presence = new Presence({
-    clientId: "844108776793178122"
-  }),
-  strings = presence.getStrings({
-    play: "presence.playback.playing",
-    pause: "presence.playback.paused",
-    live: "presence.activity.live"
-  });
+		clientId: "844108776793178122",
+	}),
+	startTimestamp = Math.floor(Date.now() / 1000);
 
-let title, author;
+async function getStrings() {
+	return presence.getStrings({
+		play: "general.playing",
+		pause: "general.paused",
+		browse: "general.browsing",
+		live: "general.live",
+		listening: "general.listeningMusic",
+	});
+}
+
+let strings: Awaited<ReturnType<typeof getStrings>>,
+	oldLang: string = null;
 
 presence.on("UpdateData", async () => {
-  const data: PresenceData = {
-      largeImageKey: "logo",
-      startTimestamp: Math.floor(Date.now() / 1000)
-    },
-    playerCheck = document.querySelector(".player__playerContainer___JEJ2U")
-      ? true
-      : false;
-  if (playerCheck) {
-    const liveCheck =
-      document.querySelector("#scrubberElapsed").textContent == "LIVE"
-        ? true
-        : false;
-    if (liveCheck) {
-      const playCheck = document.querySelector(
-        ".player-play-button__playerPlayButton___1Kc2Y[data-testid='player-status-playing']"
-      )
-        ? true
-        : false;
-      if (playCheck) {
-        title = document.querySelector("#playerTitle").textContent;
-        author = document.querySelector("#playerSubtitle").textContent;
+	const presenceData: PresenceData = {
+			largeImageKey:
+				"https://cdn.rcd.gg/PreMiD/websites/T/TuneIn/assets/logo.png",
+			type: ActivityType.Listening,
+			startTimestamp,
+		},
+		[newLang, timestamps, cover, privacy] = await Promise.all([
+			presence.getSetting<string>("lang").catch(() => "en"),
+			presence.getSetting<boolean>("timestamps"),
+			presence.getSetting<boolean>("cover"),
+			presence.getSetting<boolean>("privacy"),
+		]),
+		isLive = document.querySelector("[data-icon='stop']"),
+		isPlaying = document.querySelector("[data-testid='player-status-playing']");
 
-        data.details = title;
-        if (title.length > 128) {
-          data.details = title.substring(0, 125) + "...";
-        }
+	if (oldLang !== newLang) {
+		oldLang = newLang;
+		strings = await getStrings();
+	}
 
-        data.state = author;
-        if (author.length > 128) {
-          data.state = author.substring(0, 125) + "...";
-        }
+	if (isLive || isPlaying) {
+		if (privacy) presenceData.details = strings.listening;
+		else {
+			const title = document.querySelector("#playerTitle").textContent,
+				author = document.querySelector("#playerSubtitle").textContent,
+				artwork = document.querySelector("#playerArtwork").getAttribute("src");
 
-        data.smallImageKey = "live";
-        data.smallImageText = (await strings).live;
-      } else {
-        title = document.querySelector("#playerTitle").textContent;
-        author = document.querySelector("#playerSubtitle").textContent;
-        const audioTime =
-            document.querySelector("#scrubberElapsed").textContent,
-          audioDuration =
-            document.querySelector("#scrubberDuration").textContent,
-          timestamp1 = presence.timestampFromFormat(audioTime),
-          timestamp2 = presence.timestampFromFormat(audioDuration),
-          timestamps = presence.getTimestamps(timestamp1, timestamp2),
-          paused = document.querySelector(
-            ".player-play-button__playerPlayButton___1Kc2Y[data-testid='player-status-paused']"
-          )
-            ? true
-            : false;
+			if (title) presenceData.details = title;
+			if (author) presenceData.state = author;
+			if (artwork && cover) presenceData.largeImageKey = artwork;
+		}
 
-        data.details = title;
-        if (title.length > 128) {
-          data.details = title.substring(0, 125) + "...";
-        }
+		presenceData.smallImageKey = isLive ? Assets.Live : Assets.Play;
+		presenceData.smallImageText = isLive ? strings.live : strings.play;
 
-        data.state = author;
-        if (author.length > 128) {
-          data.state = author.substring(0, 125) + "...";
-        }
+		if (!privacy && timestamps && !isLive && isPlaying) {
+			const elapsed = document.querySelector("#scrubberElapsed").textContent,
+				duration = document.querySelector("#scrubberDuration").textContent;
 
-        (data.smallImageKey = paused ? "pause" : "play"),
-          (data.smallImageText = paused
-            ? (await strings).pause
-            : (await strings).play),
-          (data.startTimestamp = timestamps[0]),
-          (data.endTimestamp = timestamps[1]);
+			if (elapsed !== "00:00" || duration !== "") {
+				[presenceData.startTimestamp, presenceData.endTimestamp] =
+					presence.getTimestamps(
+						presence.timestampFromFormat(elapsed),
+						presence.timestampFromFormat(duration)
+					);
+			}
+		}
+	} else presenceData.details = strings.browse;
 
-        if (paused) {
-          delete data.startTimestamp;
-          delete data.endTimestamp;
-        }
-
-        presence.setActivity(data);
-      }
-    } else {
-      presence.clearActivity();
-    }
-  }
+	presence.setActivity(presenceData);
 });

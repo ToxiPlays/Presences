@@ -1,64 +1,63 @@
 const presence = new Presence({
-    clientId: "605437254776651786"
-  }),
-  strings = presence.getStrings({
-    play: "presence.playback.playing",
-    pause: "presence.playback.paused"
-  });
+		clientId: "605437254776651786",
+	}),
+	strings = presence.getStrings({
+		play: "general.playing",
+		pause: "general.paused",
+	});
+
+function convertToTitleCase(str: string): string {
+	if (!str) return "";
+
+	return str.toLowerCase().replace(/\b\w/g, s => s.toUpperCase());
+}
 
 presence.on("UpdateData", async () => {
-  const playback =
-      document.querySelector(
-        "#hbo-sdk--controller-container #hbo-sdk--controller-osd #hbo-sdk--vid #hbo-sdk--vid_Clpp_html5_mse_smooth_api"
-      ) !== null &&
-      document.querySelector("#hbo-sdk--player-title > div.content-title") !==
-        null
-        ? true
-        : false,
-    video: HTMLVideoElement = document.querySelector(
-      "#hbo-sdk--controller-container #hbo-sdk--controller-osd #hbo-sdk--vid #hbo-sdk--vid_Clpp_html5_mse_smooth_api"
-    ),
-    presenceData: PresenceData = {
-      largeImageKey: "lg"
-    };
-  if (!playback || !video) {
-    presenceData.details = "Browsing...";
-    presenceData.startTimestamp = Math.floor(Date.now() / 1000);
+	const presenceData: PresenceData = {
+			details: "Browsing...",
+			largeImageKey:
+				"https://cdn.rcd.gg/PreMiD/websites/H/HBO%20GO/assets/logo.png",
+			type: ActivityType.Watching,
+		},
+		video: HTMLVideoElement = document.querySelector("video");
 
-    return presence.setActivity(presenceData);
-  }
+	if (!isNaN(video?.duration) && !!document.querySelector("div.movie-title")) {
+		const title = convertToTitleCase(
+			document.querySelector("div.movie-title").textContent
+		);
+		if (document.location.pathname.includes("/series/")) {
+			const match = title.match(
+				/(?<series>.+?)\sS(?<season>\d+)\s(?<episode>\d{2})(?::\s*(?<title>.+))?/
+			);
 
-  if (!isNaN(video.duration)) {
-    //* Get required tags
-    const title: HTMLElement = document.querySelector(
-        "#hbo-sdk--player-title > div.content-title"
-      ),
-      [, endTimestamp] = presence.getTimestamps(
-        Math.floor(video.currentTime),
-        Math.floor(video.duration)
-      );
+			match.groups.episode = parseInt(match.groups.episode).toString();
 
-    presenceData.details = "Watching:";
-    presenceData.state = title.textContent;
-    presenceData.smallImageKey = video.paused ? "pause" : "play";
-    presenceData.smallImageText = video.paused
-      ? (await strings).pause
-      : (await strings).play;
-    presenceData.endTimestamp = endTimestamp;
+			presenceData.name = match.groups.series;
+			presenceData.details =
+				match.groups.title || `Episode ${match.groups.episode}`;
+			presenceData.state = `Season ${match.groups.season}, Episode ${match.groups.episode}`;
+		} else {
+			presenceData.details = title;
+			presenceData.state = document.location.pathname.includes("/movies/")
+				? "Movie"
+				: "Extra";
+		}
 
-    presence.setTrayTitle(video.paused ? "" : title.textContent);
+		presenceData.smallImageKey = video.paused ? Assets.Pause : Assets.Play;
+		presenceData.smallImageText = video.paused
+			? (await strings).pause
+			: (await strings).play;
+		[presenceData.startTimestamp, presenceData.endTimestamp] =
+			presence.getTimestamps(
+				Math.floor(video.currentTime),
+				Math.floor(video.duration)
+			);
 
-    //* Remove timestamps if paused
-    if (video.paused) {
-      delete presenceData.startTimestamp;
-      delete presenceData.endTimestamp;
-    }
+		if (video.paused) {
+			delete presenceData.startTimestamp;
+			delete presenceData.endTimestamp;
+		}
+	}
 
-    //* If tags are not "null"
-    if (title.textContent !== null)
-      presence.setActivity(presenceData, !video.paused);
-  } else {
-    presence.setActivity();
-    presence.setTrayTitle();
-  }
+	presence.setActivity(presenceData);
 });

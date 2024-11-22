@@ -1,68 +1,72 @@
 const presence = new Presence({
-    clientId: "828278673680498699"
-  }),
-  strings = presence.getStrings({
-    play: "presence.playback.playing"
-  });
+		clientId: "1159205639852138628",
+	}),
+	strings = presence.getStrings({
+		play: "general.playing",
+	}),
+	browsingTimestamp = Math.floor(Date.now() / 1000);
 
-const browsingStamp = Math.floor(Date.now() / 1000);
-let artist: string, title: string, playing: boolean;
+let artist: string, title: string, artwork: string, playing: boolean;
 
 presence.on(
-  "iFrameData",
-  (data: { playing: boolean; artist: string; title: string }) => {
-    playing = data.playing;
-    if (playing) {
-      artist = data.artist;
-      title = data.title;
-    }
-  }
+	"iFrameData",
+	(data: {
+		playing: boolean;
+		artist: string;
+		title: string;
+		artwork: string;
+	}) => {
+		({ playing } = data);
+		if (playing) ({ artist, title, artwork } = data);
+	}
 );
 
 presence.on("UpdateData", async () => {
-  const presenceData: PresenceData = {
-    largeImageKey: "animu"
-  };
+	const presenceData: PresenceData = {
+		largeImageKey:
+			"https://cdn.rcd.gg/PreMiD/websites/R/R%C3%A1dio%20Animu/assets/logo.png",
+		startTimestamp: browsingTimestamp,
+	};
 
-  presenceData.startTimestamp = browsingStamp;
-  if (playing) {
-    presenceData.details = artist;
-    presenceData.state = title;
-    presenceData.smallImageKey = "play";
-    presenceData.smallImageText = (await strings).play;
-  } else if (document.location.pathname.includes("/grade/")) {
-    presenceData.details = "Grade de Programação";
-    presenceData.smallImageKey = "reading";
-  } else if (document.location.pathname.includes("/pedidos/")) {
-    presenceData.details = "Pedidos";
-    presenceData.smallImageKey = "reading";
-  } else if (document.location.pathname.includes("/equipe/")) {
-    presenceData.details = "Equipe";
-    presenceData.smallImageKey = "reading";
-  } else if (document.location.pathname.includes("/sobre/")) {
-    presenceData.details = "Sobre";
-    presenceData.smallImageKey = "reading";
-  } else if (document.location.pathname.includes("/fazerparte/")) {
-    presenceData.details = "Faça Parte da Equipe";
-    presenceData.smallImageKey = "reading";
-  } else if (document.location.pathname.includes("/parceria/")) {
-    presenceData.details = "Parceria";
-    presenceData.smallImageKey = "reading";
-  } else if (document.location.pathname.includes("/suafansingaqui/")) {
-    presenceData.details = "Sua Fansing Aqui";
-    presenceData.smallImageKey = "reading";
-  } else if (document.location.pathname == "/historia/") {
-    presenceData.details = "História";
-    presenceData.smallImageKey = "reading";
-  } else if (document.location.pathname == "/") {
-    presenceData.details = "Página inicial";
-    presenceData.smallImageKey = "reading";
-  }
+	if (playing) {
+		presenceData.type = ActivityType.Listening;
+		presenceData.details = artist;
+		presenceData.state = title;
+		presenceData.smallImageKey = Assets.Play;
+		presenceData.smallImageText = (await strings).play;
+		presenceData.largeImageKey = artwork;
+	} else if (document.location.pathname.includes("/grade/")) {
+		presenceData.details = "Grade de Programação";
+		presenceData.smallImageKey = Assets.Reading;
+	} else if (document.location.pathname.includes("/pedidos/")) {
+		presenceData.details = "Pedidos";
+		presenceData.smallImageKey = Assets.Reading;
+	} else if (document.location.pathname.includes("/equipe/")) {
+		presenceData.details = "Equipe";
+		presenceData.smallImageKey = Assets.Reading;
+	} else if (document.location.pathname.includes("/sobre/")) {
+		presenceData.details = "Sobre";
+		presenceData.smallImageKey = Assets.Reading;
+	} else if (document.location.pathname.includes("/fazerparte/")) {
+		presenceData.details = "Faça Parte da Equipe";
+		presenceData.smallImageKey = Assets.Reading;
+	} else if (document.location.pathname.includes("/parceria/")) {
+		presenceData.details = "Parceria";
+		presenceData.smallImageKey = Assets.Reading;
+	} else if (document.location.pathname.includes("/suafansingaqui/")) {
+		presenceData.details = "Sua Fansing Aqui";
+		presenceData.smallImageKey = Assets.Reading;
+	} else if (document.location.pathname.includes("/historia/")) {
+		presenceData.details = "História";
+		presenceData.smallImageKey = Assets.Reading;
+	} else if (document.location.pathname === "/") {
+		presenceData.details = "Página inicial";
+		presenceData.smallImageKey = Assets.Reading;
+	} else {
+		presenceData.details = "Algures por aqui...";
+		presenceData.smallImageKey = Assets.Reading;
+	}
 
-  if (presenceData.details == null) {
-    presence.setTrayTitle();
-    presence.setActivity();
-  } else {
-    presence.setActivity(presenceData);
-  }
+	if (!presenceData.details) presence.setActivity();
+	else presence.setActivity(presenceData);
 });

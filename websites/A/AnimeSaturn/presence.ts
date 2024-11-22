@@ -1,449 +1,146 @@
 const presence = new Presence({
-  clientId: "669254632400355358"
+	clientId: "1266069361928704072",
 });
 
-/**
- * Get Timestamps
- * @param {Number} videoTime Current video time seconds
- * @param {Number} videoDuration Video duration seconds
- */
-function getTimestamps(
-  videoTime: number,
-  videoDuration: number
-): Array<number> {
-  var startTime = Date.now();
-  var endTime = Math.floor(startTime / 1000) - videoTime + videoDuration;
-  return [Math.floor(startTime / 1000), endTime];
+const enum Assets {
+	Logo = "https://cdn.rcd.gg/PreMiD/websites/A/AnimeSaturn/assets/logo.png",
 }
 
-const browsingStamp = Math.floor(Date.now() / 1000);
-let iFrameVideo: boolean,
-  currentTime: number,
-  duration: number,
-  paused: boolean,
-  playback;
-let pageNumber;
-let videoName;
-let videoEpisode;
-let fullName: string;
-let timestamps: number[];
+async function getStrings() {
+	return presence.getStrings(
+		{
+			paused: "general.paused",
+			play: "general.playing",
+			search: "general.searchFor",
+			viewHome: "general.viewHome",
+			viewShow: "general.viewShow",
+			viewEpisode: "general.viewEpisode",
+			buttonViewEpisode: "general.buttonViewEpisode",
+			buttonViewShow: "general.buttonViewShow",
+		},
+		await presence.getSetting<string>("lang").catch(() => "en")
+	);
+}
 
-presence.on(
-  "iFrameData",
-  (data: {
-    iframe_video: {
-      duration: number;
-      iFrameVideo: boolean;
-      currTime: number;
-      paused: boolean;
-    };
-  }) => {
-    playback = data.iframe_video.duration !== null ? true : false;
-    if (playback) {
-      iFrameVideo = data.iframe_video.iFrameVideo;
-      currentTime = data.iframe_video.currTime;
-      duration = data.iframe_video.duration;
-      paused = data.iframe_video.paused;
-    }
-  }
-);
+let strings: Awaited<ReturnType<typeof getStrings>>,
+	oldLang: string = null;
 
 presence.on("UpdateData", async () => {
-  const data: PresenceData = {
-    largeImageKey: "asnew"
-  };
+	const presenceData: PresenceData = {
+			largeImageKey: Assets.Logo,
+		},
+		[newLang, cover] = await Promise.all([
+			presence.getSetting<string>("lang").catch(() => "en"),
+			presence.getSetting<boolean>("cover"),
+		]),
+		{ pathname, href } = document.location;
 
-  if (document.location.pathname == "/") {
-    data.smallImageKey = "home";
-    data.smallImageText = "Homepage";
-    data.details = "Nella homepage";
-    data.startTimestamp = browsingStamp;
-    presence.setActivity(data);
-  } else if (document.location.pathname.startsWith("/animelist")) {
-    data.smallImageKey = "archive";
-    data.smallImageText = "Archivio";
-    data.details = "Sfoglia l'archivio";
-    data.startTimestamp = browsingStamp;
-    presence.setActivity(data);
-  } else if (document.location.pathname.startsWith("/toplist")) {
-    data.smallImageKey = "top";
-    data.smallImageText = "Top degli anime";
-    data.details = "Guarda la top list degli";
-    data.state = "anime";
-    data.startTimestamp = browsingStamp;
-    presence.setActivity(data);
-  } else if (document.location.pathname.startsWith("/animeincorso")) {
-    if (document.location.href.includes("?page=")) {
-      pageNumber = document.location.href.split("=")[1].split("#")[0];
-      data.smallImageKey = "schedule";
-      data.smallImageText = "Anime in corso";
-      data.details = "Sfoglia gli anime in corso";
-      data.state = "Pagina: " + pageNumber;
-      data.startTimestamp = browsingStamp;
-      presence.setActivity(data);
-    } else {
-      data.smallImageKey = "schedule";
-      data.smallImageText = "Nuove aggiunte";
-      data.details = "Sfoglia gli anime in corso";
-      data.state = "Pagina: 1";
-      data.startTimestamp = browsingStamp;
-      presence.setActivity(data);
-    }
-  } else if (document.location.pathname.startsWith("/newest")) {
-    if (document.location.href.includes("?page=")) {
-      pageNumber = document.location.href.split("=")[1].split("#")[0];
-      data.smallImageKey = "new";
-      data.smallImageText = "Nuove aggiunte";
-      data.details = "Sfoglia le nuove aggiunte";
-      data.state = "Pagina: " + pageNumber;
-      data.startTimestamp = browsingStamp;
-      presence.setActivity(data);
-    } else {
-      data.smallImageKey = "new";
-      data.smallImageText = "Nuove aggiunte";
-      data.details = "Sfoglia le nuove aggiunte";
-      data.state = "Pagina: 1";
-      data.startTimestamp = browsingStamp;
-      presence.setActivity(data);
-    }
-  } else if (document.location.pathname.startsWith("/upcoming")) {
-    if (document.location.href.includes("?page=")) {
-      pageNumber = document.location.href.split("=")[1].split("#")[0];
-      data.smallImageKey = "schedule";
-      data.smallImageText = "Prossime uscite";
-      data.details = "Sfoglia le prossime uscite";
-      data.state = "Pagina: " + pageNumber;
-      data.startTimestamp = browsingStamp;
-      presence.setActivity(data);
-    } else {
-      data.smallImageKey = "schedule";
-      data.smallImageText = "Prossime uscite";
-      data.details = "Sfoglia le prossime uscite";
-      data.state = "Pagina: 1";
-      data.startTimestamp = browsingStamp;
-      presence.setActivity(data);
-    }
-  } else if (document.location.pathname.startsWith("/calendario")) {
-    data.smallImageKey = "schedule";
-    data.smallImageText = "Calendario";
-    data.details = "Guarda il calendario degli";
-    data.state = "anime";
-    data.startTimestamp = browsingStamp;
-    presence.setActivity(data);
-  } else if (document.location.pathname.startsWith("/info")) {
-    data.smallImageKey = "info";
-    data.smallImageText = "Contatti";
-    data.details = "Cerca di contattare lo";
-    data.state = "staff di AnimeSaturn";
-    data.startTimestamp = browsingStamp;
-    presence.setActivity(data);
-  } else if (document.location.pathname.startsWith("/anime")) {
-    videoName = document.title
-      .split("AnimeSaturn - ")[1]
-      .split(" Streaming ")[0];
-    if (videoName.includes(" (ITA)")) {
-      videoName = videoName.replace(" (ITA)", "");
-    }
-    data.smallImageKey = "viewing";
-    data.smallImageText = "Scheda di: " + videoName;
-    data.details = "Guarda la scheda di:";
-    data.state = videoName;
-    data.startTimestamp = browsingStamp;
-    presence.setActivity(data);
-  } else if (document.location.pathname.startsWith("/ep/")) {
-    videoName = document.title
-      .split("AnimeSaturn - ")[1]
-      .split(" Episodio ")[0];
-    if (videoName.includes(" (ITA)")) {
-      videoName = videoName.replace(" (ITA)", "");
-    }
-    videoEpisode = document.title
-      .split(" Episodio ")[1]
-      .split(" Streaming ")[0];
-    data.smallImageKey = "watching";
-    data.smallImageText = "Sta per guardare: " + videoName;
-    data.details = "Sta per guardare:\n" + videoName;
-    data.state = "Episodio: " + videoEpisode;
-    data.startTimestamp = browsingStamp;
-    presence.setActivity(data);
-  } else if (document.location.pathname.startsWith("/movie/")) {
-    videoName = document.title.split("AnimeSaturn - ")[1].split(" Movie ")[0];
-    if (videoName.includes(" Movie")) {
-      videoName = videoName.replace(" Movie", "");
-    }
-    if (videoName.includes(" (ITA)")) {
-      videoName = videoName.replace(" (ITA)", "");
-    }
-    data.smallImageKey = "watching";
-    data.smallImageText = "Sta per guardare il film: " + videoName;
-    data.details = "Sta per guardare il film:";
-    data.state = videoName;
-    data.startTimestamp = browsingStamp;
-    presence.setActivity(data);
-  } else if (document.location.pathname.startsWith("/oav/")) {
-    videoName = document.title.split("AnimeSaturn - ")[1].split(" OVA ")[0];
-    if (videoName.includes(" OVA")) {
-      videoName = videoName.replace(" OVA", "");
-    }
-    if (videoName.includes(" OAV")) {
-      videoName = videoName.replace(" OAV", "");
-    }
-    if (videoName.includes(" (ITA)")) {
-      videoName = videoName.replace(" (ITA)", "");
-    }
-    data.smallImageKey = "watching";
-    data.smallImageText = "Sta per guardare l'ova: " + videoName;
-    data.details = "Sta per guardare l'ova:";
-    data.state = videoName;
-    data.startTimestamp = browsingStamp;
-    presence.setActivity(data);
-  } else if (document.location.pathname.startsWith("/special/")) {
-    videoName = document.title.split("AnimeSaturn - ")[1].split(" Special ")[0];
-    if (videoName.includes(" Specials")) {
-      videoName = videoName.replace(" Specials", "");
-    }
-    if (videoName.includes(" (ITA)")) {
-      videoName = videoName.replace(" (ITA)", "");
-    }
-    data.smallImageKey = "watching";
-    data.smallImageText = "Sta per guardare lo special: " + videoName;
-    data.details = "Sta per guardare lo special:";
-    data.state = videoName;
-    data.startTimestamp = browsingStamp;
-    presence.setActivity(data);
-  } else if (document.location.pathname.startsWith("/watch")) {
-    if (timestamps) {
-      data.startTimestamp = paused ? null : timestamps[0];
-      data.endTimestamp = paused ? null : timestamps[1];
-    }
-    if (document.location.href.endsWith("&extra=1")) {
-      fullName = document
-        .querySelector(
-          "#wtf > footer > div.container.rounded.bg-dark-as-box.text-white.mt-1.mb-1.p-2 > h4 > div"
-        )
-        .textContent.trim()
-        .replace("Server 1", "")
-        .replace("Server 2", "");
-    } else if (
-      document.querySelector(
-        "body > center > footer > div.container.rounded.bg-dark-as-box.text-white.mt-1.mb-1.p-2 > h4 > div"
-      )
-    ) {
-      fullName = document
-        .querySelector(
-          "body > center > footer > div.container.rounded.bg-dark-as-box.text-white.mt-1.mb-1.p-2 > h4 > div"
-        )
-        .textContent.trim()
-        .replace("Server 1", "")
-        .replace("Server 2", "");
-    } else {
-      fullName = document
-        .querySelector(
-          "#wtf > footer > div.container.rounded.bg-dark-as-box.text-white.mt-1.mb-1.p-2 > h4 > div"
-        )
-        .textContent.trim()
-        .replace("Server 1", "")
-        .replace("Server 2", "");
-    }
-    if (iFrameVideo === true) {
-      timestamps = getTimestamps(Math.floor(currentTime), Math.floor(duration));
-    }
-    if (document.location.href.endsWith("=alt")) {
-      // Alternative
-      if (fullName.includes(" Special")) {
-        if (fullName.includes(" Specials Episodio ")) {
-          // Specials OLD
+	if (oldLang !== newLang || !strings) {
+		oldLang = newLang;
+		strings = await getStrings();
+	}
 
-          videoName = fullName.split(" Specials Episodio ")[0];
-          videoEpisode = fullName.split(" Specials Episodio ")[1];
-          if (videoName.includes(" (ITA)")) {
-            videoName = videoName.replace(" (ITA)", "");
-          }
-
-          data.smallImageKey = paused ? "pause" : "play";
-          data.smallImageText = paused ? "SA｜In pausa" : "SA｜In riproduzione";
-          data.details = "Guarda: " + videoName;
-          data.state = paused
-            ? videoEpisode + "° Special｜In pausa"
-            : videoEpisode + "° Special｜In riproduzione";
-          presence.setActivity(data);
-        } else {
-          // Specials NEW
-
-          videoName = fullName.split(" Special ")[0];
-          videoEpisode = fullName.split(" Special ")[1];
-          if (videoName.includes(" Special")) {
-            videoName = videoName.replace(" Special", "");
-          }
-          if (videoName.includes(" (ITA)")) {
-            videoName = videoName.replace(" (ITA)", "");
-          }
-
-          data.smallImageKey = paused ? "pause" : "play";
-          data.smallImageText = paused ? "SA｜In pausa" : "SA｜In riproduzione";
-          data.details = "Guarda: " + videoName;
-          data.state = paused
-            ? videoEpisode + "° Special｜In pausa"
-            : videoEpisode + "° Special｜In riproduzione";
-          presence.setActivity(data);
-        }
-      } else if (fullName.includes(" Movie ")) {
-        // Movies
-
-        videoName = fullName.split(" Movie ")[0];
-        if (videoName.includes(" Movie")) {
-          videoName = videoName.replace(" Movie", "");
-        }
-        if (videoName.includes(" (ITA)")) {
-          videoName = videoName.replace(" (ITA)", "");
-        }
-
-        data.smallImageKey = paused ? "pause" : "play";
-        data.smallImageText = paused ? "SA｜In pausa" : "SA｜In riproduzione";
-        data.details = "Guarda: " + videoName;
-        data.state = paused ? "Film｜In pausa" : "Film｜In riproduzione";
-        presence.setActivity(data);
-      } else if (fullName.includes(" OVA ")) {
-        //OVA
-
-        videoName = fullName.split(" OVA ")[0];
-        videoEpisode = fullName.split(" OVA ")[1];
-        if (videoName.includes(" OVA")) {
-          videoName = videoName.replace(" OVA", "");
-        }
-        if (videoName.includes(" (ITA)")) {
-          videoName = videoName.replace(" (ITA)", "");
-        }
-
-        data.smallImageKey = paused ? "pause" : "play";
-        data.smallImageText = paused ? "SA｜In pausa" : "SA｜In riproduzione";
-        data.details = "Guarda: " + videoName;
-        data.state = paused
-          ? videoEpisode + "° OVA｜In pausa"
-          : videoEpisode + "° OVA｜In riproduzione";
-        presence.setActivity(data);
-      } else {
-        // Anime
-
-        videoName = fullName.split(" Episodio ")[0];
-        videoEpisode = fullName.split(" Episodio ")[1];
-        if (videoName.includes(" (ITA)")) {
-          videoName = videoName.replace(" (ITA)", "");
-        }
-
-        data.smallImageKey = paused ? "pause" : "play";
-        data.smallImageText = paused ? "SA｜In pausa" : "SA｜In riproduzione";
-        data.details = "Guarda: " + videoName;
-        data.state = paused
-          ? "Ep. " + videoEpisode + "｜In pausa"
-          : "Ep. " + videoEpisode + "｜In riproduzione";
-        presence.setActivity(data);
-      }
-    } else {
-      // Original
-      if (fullName.includes(" Special")) {
-        if (fullName.includes(" Specials Episodio ")) {
-          // Specials OLD
-
-          videoName = fullName.split(" Specials Episodio ")[0];
-          videoEpisode = fullName.split(" Specials Episodio ")[1];
-          if (videoName.includes(" (ITA)")) {
-            videoName = videoName.replace(" (ITA)", "");
-          }
-
-          data.smallImageKey = paused ? "pause" : "play";
-          data.smallImageText = paused ? "SO｜In pausa" : "SO｜In riproduzione";
-          data.details = "Guarda: " + videoName;
-          data.state = paused
-            ? videoEpisode + "° Special｜In pausa"
-            : videoEpisode + "° Special｜In riproduzione";
-          presence.setActivity(data);
-        } else {
-          // Specials NEW
-
-          videoName = fullName.split(" Special ")[0];
-          videoEpisode = fullName.split(" Special ")[1];
-          if (videoName.includes(" Special")) {
-            videoName = videoName.replace(" Special", "");
-          }
-          if (videoName.includes(" (ITA)")) {
-            videoName = videoName.replace(" (ITA)", "");
-          }
-
-          data.smallImageKey = paused ? "pause" : "play";
-          data.smallImageText = paused ? "SO｜In pausa" : "SO｜In riproduzione";
-          data.details = "Guarda: " + videoName;
-          data.state = paused
-            ? videoEpisode + "° Special｜In pausa"
-            : videoEpisode + "° Special｜In riproduzione";
-          presence.setActivity(data);
-        }
-      } else if (fullName.includes(" Movie ")) {
-        // Movies
-
-        videoName = fullName.split(" Movie ")[0];
-        if (videoName.includes(" Movie")) {
-          videoName = videoName.replace(" Movie", "");
-        }
-        if (videoName.includes(" (ITA)")) {
-          videoName = videoName.replace(" (ITA)", "");
-        }
-
-        data.smallImageKey = paused ? "pause" : "play";
-        data.smallImageText = paused ? "SO｜In pausa" : "SO｜In riproduzione";
-        data.details = "Guarda: " + videoName;
-        data.state = paused ? "Film｜In pausa" : "Film｜In riproduzione";
-        presence.setActivity(data);
-      } else if (fullName.includes(" OVA ")) {
-        //OVA
-
-        videoName = fullName.split(" OVA ")[0];
-        videoEpisode = fullName.split(" OVA ")[1];
-        if (videoName.includes(" OVA")) {
-          videoName = videoName.replace(" OVA", "");
-        }
-        if (videoName.includes(" (ITA)")) {
-          videoName = videoName.replace(" (ITA)", "");
-        }
-
-        data.smallImageKey = paused ? "pause" : "play";
-        data.smallImageText = paused ? "SO｜In pausa" : "SO｜In riproduzione";
-        data.details = "Guarda: " + videoName;
-        data.state = paused
-          ? videoEpisode + "° OVA｜In pausa"
-          : videoEpisode + "° OVA｜In riproduzione";
-        presence.setActivity(data);
-      } else {
-        // Anime
-
-        videoName = fullName.split(" Episodio ")[0];
-        videoEpisode = fullName.split(" Episodio ")[1];
-        if (videoName.includes(" (ITA)")) {
-          videoName = videoName.replace(" (ITA)", "");
-        }
-
-        data.smallImageKey = paused ? "pause" : "play";
-        data.smallImageText = paused ? "SO｜In pausa" : "SO｜In riproduzione";
-        data.details = "Guarda: " + videoName;
-        data.state = paused
-          ? "Ep. " + videoEpisode + "｜In pausa"
-          : "Ep. " + videoEpisode + "｜In riproduzione";
-        presence.setActivity(data);
-      }
-    }
-  } else if (document.location.pathname.startsWith("/admin")) {
-    data.largeImageKey = "hitomi";
-    data.smallImageKey = "working";
-    data.smallImageText = "💜 Hitomi Lover";
-    data.details = "Sta lavorando su";
-    data.state = "AnimeSaturn";
-    data.startTimestamp = browsingStamp;
-    presence.setActivity(data);
-  } else {
-    data.smallImageKey = "search";
-    data.smallImageText = "Navigando...";
-    data.details = "Navigando...";
-    data.startTimestamp = browsingStamp;
-    presence.setActivity(data);
-  }
+	if (document.querySelector<HTMLInputElement>(".search-box")?.value) {
+		presenceData.details = `${strings.search} ${
+			document.querySelector<HTMLInputElement>(".search-box")?.value
+		}`;
+		presenceData.smallImageKey = Assets.Search;
+		presence.setActivity(presenceData);
+		return;
+	}
+	if (pathname === "/") presenceData.details = strings.viewHome;
+	else if (pathname.startsWith("/animelist")) {
+		presenceData.details = "Viewing Archive";
+		presenceData.state = `Filter by: ${document
+			.querySelector(".badge.badge-saturn > b")
+			.textContent.replace(/\\n|\s/g, "")}`;
+	} else if (pathname.startsWith("/animeincorso")) {
+		presenceData.details = "Viewing seasonal anime";
+		presenceData.state = `Page ${
+			document.querySelector(".active > a").textContent
+		}`;
+	} else if (pathname.startsWith("/anime")) {
+		//view anime
+		presenceData.smallImageKey = Assets.Viewing;
+		presenceData.smallImageText = strings.viewShow;
+		presenceData.details = document.querySelector(
+			".anime-title-as > b"
+		).textContent;
+		presenceData.state = `Episodes: ${
+			document.querySelectorAll(
+				".btn-group.episodes-button.episodi-link-button"
+			)?.length ?? 0
+		} | ${
+			document
+				.querySelector(".container.shadow.rounded.text-white")
+				.textContent.split("\n")[1]
+		}`;
+		presenceData.largeImageKey = cover
+			? document.querySelector<HTMLImageElement>(".cover-anime")?.src ??
+			  Assets.Logo
+			: Assets.Logo;
+		presenceData.buttons = [
+			{
+				label: strings.buttonViewShow,
+				url: href,
+			},
+		];
+	} else if (pathname.startsWith("/ep")) {
+		//view episode
+		presenceData.smallImageKey = Assets.Viewing;
+		presenceData.smallImageText = strings.viewEpisode;
+		presenceData.details = strings.viewEpisode;
+		presenceData.state = document.querySelector("h3").textContent;
+		presenceData.largeImageKey = cover
+			? document.querySelector<HTMLImageElement>(".img-fluid")?.src ??
+			  Assets.Logo
+			: Assets.Logo;
+	} else if (pathname.startsWith("/watch")) {
+		//watch anime
+		delete presenceData.startTimestamp;
+		const video = document.querySelector<HTMLVideoElement>("video");
+		presenceData.smallImageKey = video.paused ? Assets.Pause : Assets.Play;
+		presenceData.smallImageText = video.paused ? strings.paused : strings.play;
+		presenceData.details =
+			document.querySelector(".text-white.mb-3").textContent;
+		if (!isNaN(video.duration) && !video.paused) {
+			[presenceData.startTimestamp, presenceData.endTimestamp] =
+				presence.getTimestamps(video.currentTime, video.duration);
+		}
+		presenceData.buttons = [
+			{
+				label: strings.buttonViewEpisode,
+				url: href,
+			},
+		];
+	} else if (pathname.startsWith("/newest"))
+		presenceData.details = "Viewing new anime";
+	else if (pathname.startsWith("/upcoming"))
+		presenceData.details = "Viewing upcoming anime";
+	else if (pathname.startsWith("/calendario"))
+		presenceData.details = "Viewing Schedule";
+	else if (pathname.startsWith("/toplist")) {
+		let top3 = "";
+		for (let i = 0; i < 3; i++) {
+			top3 += `${i + 1}° ${
+				document.querySelectorAll<HTMLImageElement>(
+					`#${
+						document.querySelector(".active.show").id
+					} .margin-top-anime-page > a > img`
+				)[i]?.title
+			}\n`;
+		}
+		presenceData.details = `Viewing top-anime: ${
+			document.querySelector(".nav-item.active").textContent
+		}`;
+		presenceData.state = top3;
+	} else if (pathname.startsWith("/info")) {
+		presenceData.smallImageKey = Assets.Viewing;
+		presenceData.details = "Viewing info";
+		presenceData.state = document.querySelector(".p-3 > b").textContent;
+		presenceData.largeImageKey =
+			document.querySelector<HTMLImageElement>(".p-3 div > img")?.src ??
+			Assets.Logo;
+	}
+	presence.setActivity(presenceData);
 });

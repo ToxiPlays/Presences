@@ -1,236 +1,241 @@
 const presence: Presence = new Presence({
-  clientId: "630236276829716483"
-});
+		clientId: "630236276829716483",
+	}),
+	browsingTimestamp = Math.floor(Date.now() / 1000);
 
-interface LangStrings {
-  play: string;
-  pause: string;
-  browsing: string;
-  watchingMovie: string;
-  watchingSeries: string;
-  watchEpisode: string;
-  watchVideo: string;
+async function getStrings() {
+	return presence.getStrings(
+		{
+			play: "general.playing",
+			pause: "general.paused",
+			browsing: "general.browsing",
+			watchingMovie: "general.watchingMovie",
+			watchingSeries: "general.watchingSeries",
+			watchEpisode: "general.buttonViewEpisode",
+			watchVideo: "general.buttonWatchVideo",
+			searchFor: "general.searchFor",
+			searchSomething: "general.searchSomething",
+		},
+		await presence.getSetting<string>("lang").catch(() => "en")
+	);
 }
-
-async function getStrings(): Promise<LangStrings> {
-  return presence.getStrings(
-    {
-      play: "general.playing",
-      pause: "general.paused",
-      browsing: "general.browsing",
-      watchingMovie: "general.watchingMovie",
-      watchingSeries: "general.watchingSeries",
-      watchEpisode: "general.buttonViewEpisode",
-      watchVideo: "general.buttonWatchVideo"
-    },
-    await presence.getSetting("lang").catch(() => "en")
-  );
-}
-
-let strings: LangStrings,
-  oldLang: string,
-  title: string,
-  subtitle: string,
-  groupWatchCount: number;
+let strings: Awaited<ReturnType<typeof getStrings>>,
+	oldLang: string = null,
+	title: string,
+	subtitle: string;
 
 presence.on("UpdateData", async () => {
-  const newLang: string = await presence.getSetting("lang").catch(() => "en"),
-    privacy: boolean = await presence.getSetting("privacy"),
-    time: boolean = await presence.getSetting("time"),
-    buttons: boolean = await presence.getSetting("buttons"),
-    groupWatchBtn: boolean = await presence.getSetting("groupWatchBtn"),
-    isHostDP = /(www\.)?disneyplus\.com/.test(location.hostname),
-    isHostHS = /(www\.)?hotstar\.com/.test(location.hostname),
-    data: PresenceData & {
-      partySize?: number;
-      partyMax?: number;
-    } = {};
+	const [newLang, privacy, time, buttons] = await Promise.all([
+			presence.getSetting<string>("lang").catch(() => "en"),
+			presence.getSetting<boolean>("privacy"),
+			presence.getSetting<boolean>("time"),
+			presence.getSetting<number>("buttons"),
+		]),
+		{ hostname, href, pathname } = document.location,
+		presenceData: PresenceData & {
+			partySize?: number;
+			partyMax?: number;
+		} = { startTimestamp: browsingTimestamp, type: ActivityType.Watching };
 
-  // Update strings when user sets language
-  if (!oldLang || oldLang !== newLang) {
-    oldLang = newLang;
-    strings = await getStrings();
-  }
+	if (oldLang !== newLang || !strings) {
+		oldLang = newLang;
+		strings = await getStrings();
+	}
 
-  if (isHostDP) {
-    data.largeImageKey = "disneyplus-logo";
-  } else if (isHostHS) {
-    data.largeImageKey = "disneyplus-hotstar-logo";
-  }
+	switch (true) {
+		case /(www\.)?disneyplus\.com/.test(hostname): {
+			presenceData.largeImageKey =
+				"https://cdn.rcd.gg/PreMiD/websites/D/Disney+/assets/logo.png";
+			switch (true) {
+				case pathname.includes("play"): {
+					if (!privacy) {
+						if (presenceData.startTimestamp) delete presenceData.startTimestamp;
+						presenceData.details = document.querySelector(
+							".title-field.body-copy"
+						)?.textContent;
+						presenceData.state =
+							document.querySelector(".subtitle-field")?.textContent;
 
-  // Disney+ video
-  if (isHostDP && location.pathname.includes("/video/")) {
-    const video: HTMLVideoElement = document.querySelector(
-      ".btm-media-clients video"
-    );
+						const paused = !!document.querySelector("[aria-label='Play']"),
+							timeRemaining = document.querySelector(
+								".time-remaining-label"
+							)?.textContent;
 
-    if (video && !isNaN(video.duration)) {
-      const groupWatchId = new URLSearchParams(location.search).get(
-          "groupWatchId"
-        ),
-        timestamps: number[] = presence.getTimestampsfromMedia(video);
+						presenceData.smallImageKey = paused ? Assets.Pause : Assets.Play;
+						presenceData.smallImageText = paused ? strings.pause : strings.play;
 
-      if (!privacy && groupWatchId) {
-        groupWatchCount = Number(
-          document.querySelector(
-            ".btm-media-overlays-container .group-profiles-control .group-profiles-control__count"
-          )?.textContent
-        );
-      }
+						if (!paused && timeRemaining) {
+							presenceData.endTimestamp =
+								Date.now() / 1000 + presence.timestampFromFormat(timeRemaining);
+						}
+					} else presenceData.details = "Watching content";
 
-      const titleField: HTMLDivElement = document.querySelector(
-          ".btm-media-overlays-container .title-field"
-        ),
-        subtitleField: HTMLDivElement = document.querySelector(
-          ".btm-media-overlays-container .subtitle-field"
-        );
+					presenceData.buttons = [
+						{
+							label: "Watch Content",
+							url: href,
+						},
+					];
+					break;
+				}
+				case pathname.includes("entity"): {
+					if (document.querySelector("#episodes_control") !== null) {
+						presenceData.details = privacy
+							? "Viewing a series"
+							: "Viewing series";
+						presenceData.buttons = [
+							{
+								label: "View Series",
+								url: href,
+							},
+						];
+					} else {
+						presenceData.details = privacy
+							? "Viewing a movie"
+							: "Viewing movie";
+						presenceData.buttons = [
+							{
+								label: "View Movie",
+								url: href,
+							},
+						];
+					}
+					const titleImg = document.querySelector(
+						'[data-testid="details-title-treatment"] img, .explore-ui-main-content-container img'
+					);
+					if (titleImg) presenceData.state = titleImg.getAttribute("alt");
+					else if (document.title.includes("|"))
+						presenceData.state = document.title.split("|")[0].trim();
+					else presenceData.state = document.title;
+					break;
+				}
+				case pathname.includes("search"): {
+					const search = document.querySelector<HTMLInputElement>(
+						'input[type="search"]'
+					);
+					if (search?.value) {
+						presenceData.details = privacy
+							? strings.searchSomething
+							: strings.searchFor;
+						presenceData.state = search.value;
+						presenceData.smallImageKey = Assets.Search;
+					} else presenceData.details = strings.browsing;
+					break;
+				}
+				case pathname.includes("home"): {
+					presenceData.details = strings.browsing;
+					break;
+				}
+				case pathname.includes("watchlist"): {
+					presenceData.details = privacy
+						? strings.browsing
+						: "Browsing their watchlist";
 
-      title = titleField?.textContent;
-      subtitle = subtitleField?.textContent; // episode or empty if it's a movie
+					break;
+				}
+				case pathname.includes("series"): {
+					presenceData.details = privacy ? strings.browsing : "Browsing series";
+					const sortingChoice = document
+						.querySelector(
+							'[id="explore-ui-main-content-container"] div div [aria-selected="true"]'
+						)
+						?.textContent?.toLowerCase();
+					if (sortingChoice !== null)
+						presenceData.state = `Sorted by ${sortingChoice}`;
+					break;
+				}
+				case pathname.includes("movies"): {
+					presenceData.details = privacy ? strings.browsing : "Browsing movies";
+					const sortingChoice = document
+						.querySelector(
+							'[id="explore-ui-main-content-container"] div div [aria-selected="true"]'
+						)
+						?.textContent?.toLowerCase();
+					if (sortingChoice !== null)
+						presenceData.state = `Sorted by ${sortingChoice}`;
+					break;
+				}
+				case pathname.includes("page"): {
+					presenceData.details = privacy
+						? "Browsing videos"
+						: `Viewing ${document.title
+								?.match(
+									/(pixar)|(marvel)|(star wars)|(national geographic)|(star)|(disney)/im
+								)[0]
+								?.toLowerCase()} content`;
+					break;
+				}
+				default: {
+					if (!privacy) {
+						if (document.title.includes("|")) {
+							presenceData.details = `Page: ${document.title
+								.split("|")[0]
+								.trim()}`;
+						} else presenceData.details = `Page: ${document.title}`;
+					} else presenceData.details = "No information";
+					break;
+				}
+			}
+			break;
+		}
+		case /(www\.)?hotstar\.com/.test(hostname): {
+			const video = document.querySelector<HTMLVideoElement>("video");
+			presenceData.largeImageKey =
+				"https://cdn.rcd.gg/PreMiD/websites/D/Disney+/assets/0.png";
 
-      if (!privacy && groupWatchId) {
-        data.details = `${title} ${subtitle ? `- ${subtitle}` : ""}`;
-        data.state = "In a GroupWatch";
-      } else {
-        if (privacy)
-          data.state = subtitle
-            ? strings.watchingSeries
-            : strings.watchingMovie;
-        else {
-          data.details = title;
-          data.state = subtitle || "Movie";
-        }
-      }
+			if (video && !isNaN(video.duration)) {
+				[presenceData.startTimestamp, presenceData.endTimestamp] =
+					presence.getTimestampsfromMedia(video);
 
-      data.smallImageKey = video.paused ? "pause" : "play";
-      data.smallImageText = video.paused ? strings.pause : strings.play;
-      data.startTimestamp = timestamps[0];
-      data.endTimestamp = timestamps[1];
+				title = document.querySelector(
+					"h1.ON_IMAGE.BUTTON1_MEDIUM"
+				)?.textContent;
+				subtitle = document.querySelector(
+					"p.ON_IMAGE_ALT2.BUTTON3_MEDIUM"
+				)?.textContent;
 
-      // remove timestamps if video is paused or user disabled timestamps
-      if (video.paused || !time) {
-        delete data.startTimestamp;
-        delete data.endTimestamp;
-      }
+				if (!title) presence.error("Unable to get the title");
 
-      // set GroupWatch participants size
-      if (!privacy && groupWatchId) {
-        data.partySize = groupWatchCount;
-        data.partyMax = 7;
-      }
+				if (privacy) {
+					presenceData.state = subtitle
+						? strings.watchingSeries
+						: strings.watchingMovie;
+				} else {
+					presenceData.details = title;
+					presenceData.state = subtitle || "Movie";
+				}
+				presenceData.smallImageKey = video.paused ? Assets.Pause : Assets.Play;
+				presenceData.smallImageText = video.paused
+					? strings.pause
+					: strings.play;
 
-      // add buttons, if enabled
-      if (!privacy && buttons) {
-        data.buttons = [
-          {
-            label: subtitle ? strings.watchEpisode : strings.watchVideo,
-            url: `https://www.disneyplus.com${location.pathname}`
-          }
-        ];
+				if (video.paused || !time) {
+					delete presenceData.startTimestamp;
+					delete presenceData.endTimestamp;
+				}
 
-        // change button if GroupWatch is active and user enabled the button
-        if (groupWatchId && groupWatchBtn) {
-          data.buttons.push({
-            label: "Join GroupWatch",
-            url: `https://www.disneyplus.com/groupwatch/${groupWatchId}`
-          });
-        }
-      }
+				if (!privacy && buttons) {
+					presenceData.buttons = [
+						{
+							label: strings.watchVideo,
+							url: href,
+						},
+					];
+				}
 
-      if (title) presence.setActivity(data, !video.paused);
-    }
+				if (title) presence.setActivity(presenceData, !video.paused);
+			}
+			break;
+		}
+	}
+	if ((presenceData.startTimestamp || presenceData.endTimestamp) && !time) {
+		delete presenceData.startTimestamp;
+		delete presenceData.endTimestamp;
+	}
+	if (privacy && presenceData.state) delete presenceData.state;
+	if ((!buttons || privacy) && presenceData.buttons)
+		delete presenceData.buttons;
 
-    // GroupWatch lobby
-  } else if (
-    isHostDP &&
-    !privacy &&
-    location.pathname.includes("/groupwatch/")
-  ) {
-    groupWatchCount = document.querySelectorAll(
-      ".gw-avatar-enter-done:not([id=gw-invite-button])"
-    ).length;
-
-    const seriesFields: NodeListOf<HTMLDivElement> = document.querySelectorAll(`
-      #webAppScene main #group + div:not([id]) h3[style]:nth-of-type(1),
-      #webAppScene main #group + div:not([id]) h3[style]:nth-of-type(2)
-    `);
-
-    if (seriesFields.length > 0) {
-      title = seriesFields[0]?.textContent;
-      subtitle = seriesFields[1]?.textContent;
-    } else {
-      const movieField: HTMLImageElement = document.querySelector(
-        "#webAppScene main #group + div:not([id]) img[alt]"
-      );
-      title = movieField?.alt;
-    }
-
-    data.details = `${title} ${subtitle ? `- ${subtitle}` : ""}`;
-    data.state = "Starting a GroupWatch";
-    // set GroupWatch participants size
-    data.partySize = groupWatchCount;
-    data.partyMax = 7;
-
-    // add button, if enabled
-    if (buttons && groupWatchBtn) {
-      data.buttons = [
-        {
-          label: "Join GroupWatch",
-          url: location.pathname
-        }
-      ];
-    }
-
-    if (title) presence.setActivity(data, false);
-
-    // Disney+ Hotstar video
-  } else if (isHostHS && /\/(tv|movies)\//.test(location.pathname)) {
-    const video: HTMLVideoElement =
-      document.querySelector(".player-base video");
-
-    if (video && !isNaN(video.duration)) {
-      const timestamps: number[] = presence.getTimestampsfromMedia(video),
-        titleField: HTMLDivElement = document.querySelector(
-          ".controls-overlay .primary-title"
-        ),
-        subtitleField: HTMLDivElement = document.querySelector(
-          ".controls-overlay .show-title"
-        );
-
-      title = titleField?.textContent;
-      subtitle = subtitleField?.textContent; // episode or empty if it's a movie
-
-      if (privacy)
-        data.state = subtitle ? strings.watchingSeries : strings.watchingMovie;
-      else {
-        data.details = title;
-        data.state = subtitle || "Movie";
-      }
-      data.smallImageKey = video.paused ? "pause" : "play";
-      data.smallImageText = video.paused ? strings.pause : strings.play;
-      data.startTimestamp = timestamps[0];
-      data.endTimestamp = timestamps[1];
-
-      if (video.paused || !time) {
-        delete data.startTimestamp;
-        delete data.endTimestamp;
-      }
-
-      if (!privacy && buttons) {
-        data.buttons = [
-          {
-            label: strings.watchVideo,
-            url: `https://www.hotstar.com${location.pathname}`
-          }
-        ];
-      }
-
-      if (title) presence.setActivity(data, !video.paused);
-    }
-
-    // Browsing
-  } else {
-    data.details = strings.browsing;
-    presence.setActivity(data);
-  }
+	if (presenceData.details) presence.setActivity(presenceData);
+	else presence.setActivity();
 });

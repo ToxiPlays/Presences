@@ -1,206 +1,317 @@
 const presence: Presence = new Presence({
-    clientId: "833430731816173669",
-    injectOnComplete: true
-  }),
-  largeImageKey = "logo";
+		clientId: "833430731816173669",
+	}),
+	levelImages: Record<string, string> = {
+		10: "https://cdn.rcd.gg/PreMiD/websites/B/Bunpro/assets/0.png",
+		20: "https://cdn.rcd.gg/PreMiD/websites/B/Bunpro/assets/1.png",
+		30: "https://cdn.rcd.gg/PreMiD/websites/B/Bunpro/assets/2.png",
+		40: "https://cdn.rcd.gg/PreMiD/websites/B/Bunpro/assets/3.png",
+		50: "https://cdn.rcd.gg/PreMiD/websites/B/Bunpro/assets/4.png",
+		60: "https://cdn.rcd.gg/PreMiD/websites/B/Bunpro/assets/5.png",
+		70: "https://cdn.rcd.gg/PreMiD/websites/B/Bunpro/assets/6.png",
+		80: "https://cdn.rcd.gg/PreMiD/websites/B/Bunpro/assets/7.png",
+		90: "https://cdn.rcd.gg/PreMiD/websites/B/Bunpro/assets/8.png",
+		100: "https://cdn.rcd.gg/PreMiD/websites/B/Bunpro/assets/9.png",
+	},
+	slideshow = presence.createSlideshow();
+
+let browsingTimestamp = Math.floor(Date.now() / 1000),
+	oldPath: string;
 
 function getLevelIcon(level: number) {
-  let iconKey = "level-10";
-
-  if (level >= 10 && level < 100)
-    iconKey = `level-${+(level / 100).toPrecision(1) * 100}`;
-
-  if (level < 10) iconKey = "level-10";
-
-  if (level >= 100) iconKey = "level-100";
-
-  return iconKey;
+	let iconKey = levelImages["10"];
+	if (level >= 10 && level < 100)
+		iconKey = levelImages[`${Math.floor(level / 10) * 10}`];
+	if (level < 10) iconKey = levelImages["10"];
+	if (level >= 100) iconKey = levelImages["100"];
+	return iconKey;
 }
 
-function getLevelInHeader() {
-  const levelElement: HTMLDivElement =
-    document.querySelector(".navbar-user-level");
+function applyGrammarPointDetails(presenceData: PresenceData) {
+	const { pathname, href } = document.location;
+	presenceData.details = "Viewing a grammar point";
+	presenceData.state = removeRubyCharacters(document.querySelector("h1 > div"));
+	if (!pathname.startsWith("/learn"))
+		presenceData.buttons = [{ label: "View Grammar Point", url: href }];
+}
 
-  return +levelElement.innerText.slice(6);
+function applyGrammarReviewDetails(presenceData: PresenceData) {
+	const details = document.querySelector<HTMLUListElement>(
+		"header ul:nth-child(2)"
+	).children;
+	presenceData.state = `${details[0].textContent} | ${details[1].textContent} correct | ${details[2].textContent} remaining`;
+}
+
+function removeRubyCharacters(element: HTMLElement) {
+	let text = "";
+	for (const child of element.childNodes) {
+		if (child.nodeName === "RUBY") text += child.childNodes[0].textContent;
+		else text += child.textContent;
+	}
+	return text;
 }
 
 presence.on("UpdateData", () => {
-  const { pathname } = window.location,
-    data: PresenceData = {
-      largeImageKey
-    },
-    level: number = getLevelInHeader();
+	const { pathname, hostname, href } = document.location,
+		pathSplit = pathname.split("/").slice(1),
+		presenceData: PresenceData = {
+			largeImageKey:
+				"https://cdn.rcd.gg/PreMiD/websites/B/Bunpro/assets/logo.png",
+			startTimestamp: browsingTimestamp,
+		};
 
-  let details: string,
-    state: string,
-    smallImageText: string,
-    startTimestamp: number;
+	if (oldPath !== pathname) {
+		browsingTimestamp = Math.floor(Date.now() / 1000);
+		oldPath = pathname;
+	}
 
-  if (/grammar_points\/\d+/i.test(pathname)) {
-    startTimestamp = Date.now();
-    details = "Doing Lessons";
+	if (hostname === "community.bunpro.jp") {
+		switch (pathSplit[0]) {
+			case "":
+			case "categories": {
+				presenceData.details = "Browsing the community";
+				break;
+			}
+			case "c": {
+				presenceData.details = "Browsing community category";
+				presenceData.state =
+					document.querySelector<HTMLSpanElement>(".category-name").textContent;
+				break;
+			}
+			case "latest": {
+				presenceData.details = "Browsing latest topics";
+				break;
+			}
+			case "new": {
+				presenceData.details = "Browsing new topics";
+				break;
+			}
+			case "search": {
+				presenceData.details = "Searching the community";
+				presenceData.state = document.querySelector<HTMLInputElement>(
+					".search-bar > input"
+				).value;
+				break;
+			}
+			case "t": {
+				presenceData.details = "Viewing a community topic";
+				presenceData.state = document.querySelector("h1").textContent;
+				presenceData.buttons = [{ label: "View Topic", url: href }];
+				break;
+			}
+			case "top": {
+				presenceData.details = "Browsing top topics";
+				break;
+			}
+			case "u": {
+				presenceData.details = `Viewing ${document
+					.querySelector("h1")
+					.textContent.trim()}'s community profile`;
+				presenceData.state = document.querySelector<HTMLAnchorElement>(
+					".user-primary-navigation .active"
+				).textContent;
+				presenceData.smallImageKey = document.querySelector<HTMLImageElement>(
+					".user-profile-avatar > img"
+				).src;
+				presenceData.smallImageText = `Level ${
+					document
+						.querySelector<HTMLDivElement>(".user-profile-avatar .avatar-flair")
+						.title.match(/\d+/)[0]
+				}`;
+				presenceData.buttons = [{ label: "View Profile", url: href }];
+				break;
+			}
+			case "unread": {
+				presenceData.details = "Browsing unread topics";
+				break;
+			}
+			default: {
+				presenceData.details = "Browsing the community";
+				presenceData.state = document.title.match(
+					/^(.*?)( - Bunpro Community)?$/
+				)[1];
+			}
+		}
+	} else {
+		const level = +(
+			document.querySelector<HTMLParagraphElement>(".header-user-level") ??
+			document
+				.querySelector<HTMLImageElement>("header li > button img")
+				?.closest<HTMLDivElement>("button > div")
+				.querySelector<HTMLParagraphElement>("div:nth-child(2) p:last-child")
+		)?.textContent.match(/\d+/)[0];
+		if (level) {
+			presenceData.smallImageKey = getLevelIcon(level);
+			presenceData.smallImageText = `Level ${level}`;
+		}
+		switch (pathSplit[0]) {
+			case "bookmarks": {
+				presenceData.details = "Viewing their bookmarks";
+				break;
+			}
+			case "cram": {
+				presenceData.details = "Cramming";
+				if (document.querySelector<HTMLDivElement>("#new-cram"))
+					presenceData.state = "Selecting grammar to cram";
+				else applyGrammarReviewDetails(presenceData);
+				break;
+			}
+			case "dashboard": {
+				const reviews = document.querySelector<HTMLDivElement>(
+					"article li:last-child a div:nth-child(2)"
+				).textContent;
+				presenceData.details = "Viewing dashboard";
+				presenceData.state = `${reviews} review${reviews === "1" ? "" : "s"}`;
+				break;
+			}
+			case "grammar_points": {
+				if (pathSplit[1]) applyGrammarPointDetails(presenceData);
+				else presenceData.details = "Browsing grammar points";
+				break;
+			}
+			case "learn": {
+				if (document.querySelector("#js-quiz")) {
+					presenceData.details = "Learning new grammar";
+					applyGrammarReviewDetails(presenceData);
+				} else applyGrammarPointDetails(presenceData);
+				break;
+			}
+			case "lessons": {
+				if (pathSplit[1]) {
+					presenceData.details = "Practicing reading";
+					presenceData.state = document.querySelector("h2").textContent.trim();
+					presenceData.buttons = [{ label: "View Lesson", url: href }];
+				} else presenceData.details = "Viewing lessons";
+				break;
+			}
+			case "notifications": {
+				presenceData.details = "Viewing their notifications";
+				break;
+			}
+			case "paths": {
+				if (pathSplit[1]) {
+					if (pathSplit[2]) applyGrammarPointDetails(presenceData);
+					else {
+						presenceData.details = "Viewing a grammar path";
+						presenceData.state = document.querySelector("h2").textContent;
+						presenceData.buttons = [{ label: "View Grammar Path", url: href }];
+					}
+				} else presenceData.details = "Browsing grammar paths";
+				break;
+			}
+			case "reading_passages": {
+				presenceData.details = "Browsing practice reading passages";
+				break;
+			}
+			case "reviews": {
+				presenceData.details = "Doing reviews";
+				applyGrammarReviewDetails(presenceData);
+				break;
+			}
+			case "summary": {
+				presenceData.details = "Viewing review summary";
+				const correctElement = document.querySelector<HTMLHeadingElement>(
+					"h4.text-quiz-correct"
+				);
+				if (correctElement) {
+					presenceData.state = `${correctElement.textContent} correct / ${
+						document.querySelector<HTMLHeadingElement>("h4.text-quiz-incorrect")
+							.textContent
+					} incorrect (${
+						document.querySelector<HTMLHeadingElement>("aside h3").textContent
+					})`;
+				}
+				break;
+			}
+			case "user": {
+				if (pathSplit[1] === "feedback")
+					presenceData.details = "Viewing their feedback";
+				else {
+					switch (pathSplit[2] ?? "") {
+						case "": {
+							presenceData.details = "Viewing their profile";
+							const [daysStudied, studyStreak, level, xp] =
+								document.querySelector<HTMLDivElement>("h2 + div").children;
+							presenceData.state = `${daysStudied
+								.querySelector("p")
+								.textContent.trim()} days studied | ${studyStreak
+								.querySelector("p")
+								.textContent.trim()} streak | Level ${level
+								.querySelector("p")
+								.textContent.trim()} (${xp
+								.querySelector("p")
+								.textContent.trim()} XP)`;
+							break;
+						}
+						case "badges": {
+							for (const [i, badgeContainer] of document
+								.querySelectorAll<HTMLDivElement>(".user-profile-badge--earned")
+								.entries()) {
+								slideshow.addSlide(
+									i.toString(),
+									{
+										...presenceData,
+										details: "Viewing their badges",
+										state: `${
+											badgeContainer.querySelector("h3").textContent
+										} - ${
+											badgeContainer.querySelector<HTMLDivElement>(
+												".user-profile-badge--requirement"
+											).textContent
+										}`,
+										largeImageKey:
+											badgeContainer.querySelector<HTMLImageElement>(
+												".user-profile-badge--icon"
+											).src,
+										smallImageText:
+											badgeContainer.querySelector<HTMLDivElement>(
+												".user-profile-badge--flavor-text"
+											).textContent,
+									},
+									5000
+								);
+							}
+							break;
+						}
+						case "reset": {
+							presenceData.details = "Resetting their account";
+							break;
+						}
+						case "stats": {
+							presenceData.details = "Viewing their stats";
+							break;
+						}
+					}
+				}
+				break;
+			}
+			case "vocabs": {
+				if (pathSplit[1]) {
+					presenceData.details = "Viewing a vocabulary";
+					presenceData.state = `${removeRubyCharacters(
+						document.querySelector<HTMLDivElement>("h1 > div")
+					)} - ${document.querySelector("h2").textContent}`;
+					presenceData.buttons = [{ label: "View Vocabulary", url: href }];
+				} else {
+					presenceData.details = "Searching for vocabulary";
+					presenceData.state =
+						document.querySelector<HTMLInputElement>("#query").value;
+				}
+				break;
+			}
+			default: {
+				presenceData.details = "Browsing";
+				presenceData.state = document.querySelector("h1")?.textContent.trim();
+			}
+		}
+	}
 
-    const grammarPointElement: HTMLSpanElement = document.querySelector(
-        ".grammar-point__title.grammar-point__title--default"
-      ),
-      grammarPoint = grammarPointElement.innerText,
-      lessonProgressElement: HTMLDivElement = document.querySelector(
-        ".header__lesson-progress"
-      ),
-      [lessonType, lessonProgress] =
-        lessonProgressElement.innerText.split(": ");
-
-    state = `Learning ${grammarPoint}`;
-
-    smallImageText = `${lessonType}: ${lessonProgress}`;
-  } else {
-    switch (pathname) {
-      case "/study": {
-        startTimestamp = Date.now();
-        details = "Doing reviews";
-
-        const hint: HTMLDivElement = document.querySelector(
-            ".study-question-english-hint"
-          ),
-          hintText = hint.innerText,
-          SRS: HTMLDivElement = document.querySelector(
-            ".review__stats.srs-tracker"
-          ),
-          SRSLevel = SRS.innerText,
-          successRate: HTMLDivElement = document.querySelector(
-            ".review__stats.review-percent"
-          );
-
-        smallImageText = successRate.innerText;
-
-        state = hintText ? `${hintText} (${SRSLevel})` : SRSLevel;
-
-        break;
-      }
-      case "/bookmarks":
-      case "/lessons":
-      case "/grammar_points": {
-        details = "Browsing Grammar";
-
-        break;
-      }
-      case "/learn": {
-        startTimestamp = Date.now();
-
-        const checkQuizzElement: HTMLDivElement = document.querySelector(
-            "#learn-new-grammar-page"
-          ),
-          isOnQuizz = checkQuizzElement.style.display === "block";
-
-        if (isOnQuizz) {
-          details = "Learning New Grammar (Quizz)";
-
-          const grammarPointElement: HTMLDivElement = document.querySelector(
-              ".study-question-english-hint"
-            ),
-            grammarPoint = grammarPointElement.innerText,
-            lessonProgressElement: HTMLDivElement = document.querySelector(
-              ".review__stats#reviews"
-            ),
-            lessonProgress = lessonProgressElement.innerText;
-
-          state = `${grammarPoint}`;
-
-          smallImageText = `${lessonProgress}`;
-        } else {
-          details = "Learning New Grammar";
-
-          let activeGrammarPoint: HTMLDivElement;
-
-          activeGrammarPoint = document.querySelector(
-            `.grammar-point-study[style*="display: block"]`
-          );
-
-          if (!activeGrammarPoint) {
-            activeGrammarPoint = document.querySelector(".grammar-point-study");
-          }
-
-          const grammarPointElement: HTMLSpanElement =
-              activeGrammarPoint.querySelector(
-                ".grammar-point__title.grammar-point__title--default"
-              ),
-            grammarPoint = grammarPointElement.innerText,
-            lessonProgressElement: HTMLDivElement =
-              activeGrammarPoint.querySelector(".header__lesson-progress"),
-            lessonProgress = lessonProgressElement.innerText,
-            activeTabElement: HTMLLIElement = activeGrammarPoint.querySelector(
-              ".navbar_option--active-tab"
-            ),
-            activeTab = activeTabElement.innerText;
-
-          state = `${grammarPoint} | ${activeTab}`;
-
-          smallImageText = lessonProgress;
-        }
-
-        break;
-      }
-      case "/cram": {
-        const cramStartElement: HTMLDivElement =
-          document.querySelector(".cram-start");
-
-        if (cramStartElement.style.display !== "none") {
-          details = "Browsing Grammar";
-          break;
-        }
-
-        startTimestamp = Date.now();
-        details = "Doing Cram";
-
-        const grammarPointElement: HTMLDivElement = document.querySelector(
-            ".study-question-english-hint"
-          ),
-          grammarPoint = grammarPointElement.innerText,
-          lessonProgressElement: HTMLDivElement = document.querySelector(
-            ".review__stats#reviews"
-          ),
-          lessonType = lessonProgressElement.innerText;
-
-        state = `Reviewing ${grammarPoint}`;
-
-        smallImageText = `${lessonType}`;
-
-        break;
-      }
-      case "/":
-      case "/dashboard":
-      case "/login":
-      default: {
-        const reviews: HTMLDivElement = document.querySelector(
-          "#user-dashboard > div:nth-child(1) > div.col-lg-7.col-md-12.height-100.d-flex.flex-column.flex-grow-2.pl-0.pr-xl-3.pr-0 > div:nth-child(1) > div.col-md-6.col-12.pl-md-1.pr-md-0.pr-0.pl-0 > div > div:nth-child(3)"
-        );
-
-        if (reviews) {
-          const reviewsCount: string = reviews.innerText;
-
-          details = "Viewing Dashboard";
-          state = `${reviewsCount} reviews`;
-        } else {
-          details = "Browsing Pages";
-        }
-
-        break;
-      }
-    }
-  }
-
-  data.details = details;
-
-  if (state) data.state = state;
-
-  if (level) {
-    data.smallImageKey = getLevelIcon(level);
-
-    if (!smallImageText) smallImageText = `Level ${level}`;
-  }
-  if (smallImageText) data.smallImageText = smallImageText;
-
-  if (startTimestamp) data.startTimestamp = Math.round(startTimestamp / 1000);
-
-  presence.setActivity(data);
+	if (presenceData.details) {
+		presence.setActivity(presenceData);
+		slideshow.deleteAllSlides();
+	} else if (slideshow.getSlides().length) presence.setActivity(slideshow);
+	else {
+		presence.setActivity();
+		slideshow.deleteAllSlides();
+	}
 });
